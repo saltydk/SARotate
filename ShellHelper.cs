@@ -25,22 +25,17 @@ namespace Linuxtesting
             };
             process.Exited += (sender, args) =>
             {
-                //logger.LogWarning(process.StandardError.ReadToEnd());
-                //logger.LogInformation(process.StandardOutput.ReadToEnd());
                 if (process.ExitCode == 0)
                 {
-                    var error = process.StandardError.ReadToEnd();
                     var output = process.StandardOutput.ReadToEnd();
-                    var result = "";
-                    result += string.IsNullOrEmpty(error) ? "" : $"STDERR: {error} \n";
-                    result += string.IsNullOrEmpty(output) ? "" : $"STDOUT: {output} \n"; ;
-
+                    var result = $"STDOUT:{output}";
                     source.SetResult(result);
                 }
                 else
                 {
-                    var result = "";
-                    result += $"STDERR: {process.StandardError.ReadToEnd()} \n";
+                    var error = process.StandardError.ReadToEnd();
+
+                    var result = $"STDERR:{error}";
 
                     source.SetResult(result);
                 }

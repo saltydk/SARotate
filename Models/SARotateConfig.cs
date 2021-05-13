@@ -9,7 +9,7 @@ namespace Linuxtesting
         [YamlDotNet.Serialization.YamlMember(Alias = "global")]
         public GlobalConfig GlobalConfig { get; set; }
         [YamlDotNet.Serialization.YamlMember(Alias = "main")]
-        ///svcAcctFolder -> remote -> connection info 
+        ///svcAcctGroup absolute path -> remote -> connection info 
         public Dictionary<string, Dictionary<string, string>> MainConfig { get; set; }
     }
 }
