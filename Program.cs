@@ -1,16 +1,11 @@
-﻿using Linuxtesting.Models;
-using Linuxtesting.Models.Google;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Timers;
-using System.Web;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -18,115 +13,53 @@ namespace Linuxtesting
 {
     class Program
     {
+        public static IConfiguration _configuration;
+
         static async Task Main(string[] args)
         {
-            SetupStaticLogger();
+            using var host = CreateHostBuilder(args).Build();
 
-            string configAbsolutePath = args.Skip(1).FirstOrDefault() ?? Directory.GetCurrentDirectory()+"/config.yaml";
+            Log.Information("SARotate vSickAssRotater9001 started");
 
-            SARotateConfig yamlConfigContent = await ParseSARotateYamlConfig(configAbsolutePath);
-
-            try
-            {
-                (Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, string rCloneCommand) = await SARotate.InitializeRCloneCommand(yamlConfigContent);
-
-                await RunSwappingService(yamlConfigContent, serviceAccountUsageOrderByGroup, rCloneCommand);
-            }
-            catch (Exception e)
-            {
-                await SendAppriseNotification(yamlConfigContent, e.Message, true);
-                throw;
-            }
+            await host.RunAsync();
         }
 
-        private static async Task RunSwappingService(SARotateConfig yamlConfigContent, Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, string rCloneCommand)
+        private static IHostBuilder CreateHostBuilder(string[] args)
         {
-            bool swapServiceAccounts = true;
-            while (swapServiceAccounts)
-            {
-                foreach (KeyValuePair<string, List<ServiceAccount>> serviceAccountGroup in serviceAccountUsageOrderByGroup)
+           return Host.CreateDefaultBuilder()
+                .ConfigureHostConfiguration(configHost =>
                 {
-                    var remoteConfig = yamlConfigContent.MainConfig[serviceAccountGroup.Key];
-                    var remote = remoteConfig.Keys.First(); //only 1 value, but need dictionary to parse yaml
-                    var addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
-                    var nextServiceAccount = serviceAccountGroup.Value.First();
+                    configHost.SetBasePath(Directory.GetCurrentDirectory());
 
-                    var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
-                    var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\": -o service_account_file=\"{nextServiceAccount.FilePath}\"";
+                    // Build configuration
+                    _configuration = new ConfigurationBuilder()
+                        .SetBasePath(Directory.GetParent(AppContext.BaseDirectory)?.FullName ?? Directory.GetCurrentDirectory())
+                        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                        .AddCommandLine(args)
+                        .Build();
 
-                    string commandForCurrentServiceAccountGroupRemote = rCloneCommand + rcCommandAddressParameter + rcCommandBackendCommandParameter;
+                    var logger = new LoggerConfiguration()
+                      .ReadFrom.Configuration(_configuration)
+                      //.Enrich.
+                      .CreateLogger();
 
-                    var bashResult = await commandForCurrentServiceAccountGroupRemote.Bash();
-
-                    if (bashResult.exitCode != (int)ExitCode.Success)
-                    {
-                        await SendAppriseNotification(yamlConfigContent, $"Could not swap service account for remote {remote}", true);
-                    }
-                    else
-                    {
-                        serviceAccountGroup.Value.Remove(nextServiceAccount);
-                        serviceAccountGroup.Value.Add(nextServiceAccount);
-
-                        var stdoutputJson = bashResult
-                        .result
-                        .Split("STDOUT:")
-                        .Last();
-
-                        var rcloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson);
-                        await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rcloneCommandResult);
-                    }
-                }
-
-                var timeoutMilliSeconds = yamlConfigContent.GlobalConfig.SleepTime * 1000;
-                await Task.Delay(timeoutMilliSeconds);
-            }
-        }
-
-        private static async Task LogRCloneServiceAccountSwapResult(SARotateConfig yamlConfigContent, string remote, string stdoutputJson, RCloneRCCommandResult rcloneCommandResult)
-        {
-            var currentFile = rcloneCommandResult.Result.ServiceAccountFile.Current.Split("/").LastOrDefault();
-            var previousFile = rcloneCommandResult.Result.ServiceAccountFile.Previous.Split("/").LastOrDefault();
-
-            var logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.GlobalConfig.SleepTime} seconds\n";
-            LogInformation(logMessage, stdoutputJson);
-            await SendAppriseNotification(yamlConfigContent, logMessage);
-        }
-
-        private static async Task SendAppriseNotification(SARotateConfig yamlConfigContent, string logMessage, bool error = false)
-        {
-            if (yamlConfigContent.NotificationConfig.AppriseServices.Any())
-            {
-                string appriseCommand = $"apprise -vv ";
-                appriseCommand += error ? "-t 'ERROR!!!' " : "";
-                var escapedLogMessage = logMessage.Replace("'", "´").Replace("\"", "´");
-                appriseCommand += $"-b '{escapedLogMessage}' ";
-
-                foreach (var appriseService in yamlConfigContent.NotificationConfig.AppriseServices)
+                    Log.Logger = logger;
+                })
+                .ConfigureServices(services =>
                 {
-                    appriseCommand += $"'{appriseService}' ";
-                }
+                    string configAbsolutePath = _configuration["config"] ?? Directory.GetCurrentDirectory() + "/config.yaml";
 
-                await appriseCommand.Bash();
+                    SARotateConfig config = ParseSARotateYamlConfig(configAbsolutePath);
 
-                LogInformation($"sent apprise notification: {logMessage}");
-            }
+                    services.AddHostedService<SARotate>();
+                    services.AddSingleton(config);
+                    services.AddSingleton(_configuration);
+                })
+                .UseSerilog();
         }
 
-        private static void LogInformation(string logMessage, string debugMessage = null)
+        private static SARotateConfig ParseSARotateYamlConfig(string configAbsolutePath)
         {
-            Console.WriteLine(logMessage);
-            Log.Information(logMessage);
-            if (!string.IsNullOrEmpty(debugMessage))
-            {
-                Log.Debug("\n" + debugMessage);
-            }
-        }
-
-        private static async Task<SARotateConfig> ParseSARotateYamlConfig(string configAbsolutePath)
-        {
-#if DEBUG
-            configAbsolutePath ??= "/home/shadowspy/config2.yaml";
-#endif
             if (string.IsNullOrEmpty(configAbsolutePath))
             {
                 Console.WriteLine("configAbsolutePath missing as argument");
@@ -137,7 +70,7 @@ namespace Linuxtesting
             {
                 if (File.Exists(configAbsolutePath))
                 {
-                    string fileContent = await streamReader.ReadToEndAsync();
+                    string fileContent = streamReader.ReadToEnd();
 
                     try
                     {
@@ -159,19 +92,6 @@ namespace Linuxtesting
                     throw new ArgumentException("Config file not found");
                 }
             }
-        }
-
-        private static void SetupStaticLogger()
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(configuration)
-                .CreateLogger();
-
-            Log.Information("SARotate vSickAssRotater9000 started");
         }
     }
 }
