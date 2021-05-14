@@ -35,7 +35,7 @@ namespace Linuxtesting
             {
                 (Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, string rCloneCommand) = await InitializeRCloneCommand(yamlConfigContent);
 
-                await RunSwappingService(yamlConfigContent, serviceAccountUsageOrderByGroup, rCloneCommand);
+                await RunSwappingService(yamlConfigContent, serviceAccountUsageOrderByGroup, rCloneCommand, cancellationToken);
             }
             catch (Exception e)
             {
@@ -197,13 +197,24 @@ namespace Linuxtesting
             return accountCollections;
         }
 
-        private async Task RunSwappingService(SARotateConfig yamlConfigContent, Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, string rCloneCommand)
+        private async Task RunSwappingService(
+            SARotateConfig yamlConfigContent, 
+            Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, 
+            string rCloneCommand, 
+            CancellationToken cancellationToken)
         {
             bool swapServiceAccounts = true;
-            while (swapServiceAccounts)
+            while(swapServiceAccounts)
             {
+                swapServiceAccounts &= !cancellationToken.IsCancellationRequested;
+
                 foreach (KeyValuePair<string, List<ServiceAccount>> serviceAccountGroup in serviceAccountUsageOrderByGroup)
                 {
+                    if (!swapServiceAccounts)
+                    {
+                        return;
+                    }
+
                     var remoteConfig = yamlConfigContent.MainConfig[serviceAccountGroup.Key];
                     var remote = remoteConfig.Keys.First(); //only 1 value, but need dictionary to parse yaml
                     var addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
@@ -236,7 +247,15 @@ namespace Linuxtesting
                 }
 
                 var timeoutMilliSeconds = yamlConfigContent.GlobalConfig.SleepTime * 1000;
-                await Task.Delay(timeoutMilliSeconds);
+
+                try
+                {
+                    await Task.Delay(timeoutMilliSeconds, cancellationToken);
+                }
+                catch
+                {
+
+                }
             }
         }
 

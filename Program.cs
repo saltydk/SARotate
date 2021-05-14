@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -17,11 +17,22 @@ namespace Linuxtesting
 
         static async Task Main(string[] args)
         {
+            var cts = new CancellationTokenSource();
+
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                Console.WriteLine("SARotate stopped");
+                Log.Information("SARotate stopped");
+                cts.Cancel();
+            };
+
             using var host = CreateHostBuilder(args).Build();
 
-            Log.Information("SARotate vSickAssRotater9001 started");
+            Console.TreatControlCAsInput = false;
 
-            await host.RunAsync();
+            Log.Information("SARotate started");
+
+            await host.RunAsync(cts.Token);
         }
 
         private static IHostBuilder CreateHostBuilder(string[] args)
