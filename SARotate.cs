@@ -1,35 +1,37 @@
 ﻿using Linuxtesting.Models.Google;
 using Newtonsoft.Json;
 using Serilog;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 
 namespace Linuxtesting
 {
     public static class SARotate
     {
-        public static async Task DoWork(string[] args)
+        public static async Task<(Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, string rCloneCommand)> InitializeRCloneCommand(SARotateConfig yamlConfigContent)
         {
-            string configAbsolutePath = args.Skip(1).FirstOrDefault();
+            Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup = await GenerateServiceAccountUsageOrderByGroup(yamlConfigContent);
 
-#if DEBUG
-            configAbsolutePath ??= "/home/shadowspy/config2.yaml";
-#endif
+            string rcloneCommand = "rclone rc";
 
-            SARotateConfig yamlConfigContent = await ParseSARotateYamlConfig(configAbsolutePath);
-            var serviceAccountUsageOrderByGroup = new Dictionary<string, (List<ServiceAccount> svcAcctsUsageOrder, int indexForCurrent)>();
+            bool rcloneConfigUserExists = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.User) && !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.Pass);
+            if (rcloneConfigUserExists)
+            {
+                rcloneCommand += $" --rc-user={yamlConfigContent.RCloneConfig.User} --rc-pass={yamlConfigContent.RCloneConfig.Pass}";
+            }
+
+            return (serviceAccountUsageOrderByGroup, rcloneCommand);
+        }
+
+        private static async Task<Dictionary<string, List<ServiceAccount>>> GenerateServiceAccountUsageOrderByGroup(SARotateConfig yamlConfigContent)
+        {
+            var serviceAccountUsageOrderByGroup = new Dictionary<string, List<ServiceAccount>>();
 
             foreach (var serviceAccountFolder in yamlConfigContent.MainConfig)
             {
                 string serviceAccountsDirectoryAbsolutePath = serviceAccountFolder.Key;
-#if DEBUG
-                serviceAccountsDirectoryAbsolutePath = "/home/shadowspy/svcaccts";
-#endif
 
                 List<ServiceAccount> svcacctsJsons = (await ParseSvcAccts(serviceAccountsDirectoryAbsolutePath))
                .OrderBy(c => c.ClientEmail)
@@ -37,47 +39,48 @@ namespace Linuxtesting
 
                 List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcacctsJsons);
 
-                int indexForServiceAccountToUse;
-
                 foreach (var remote in yamlConfigContent.MainConfig[serviceAccountFolder.Key].Keys)
                 {
-                    var bashResult = await $"rclone config show {remote}:".Bash();
+                    int remoteIndexForServiceAccountToUse = await FindPreviousServiceAccountUsedForRemote(svcAcctsUsageOrder, remote);
 
-                    var lines = bashResult.Split("\n");
-
-                    var svcAccountLine = lines.FirstOrDefault(l => l.Contains("service_account_file"));
-
-                    if (string.IsNullOrEmpty(svcAccountLine))
+                    if (remoteIndexForServiceAccountToUse != -1)
                     {
-                        indexForServiceAccountToUse = 0;
+                        var serviceAccountPreviouslyUsed = svcAcctsUsageOrder.ElementAt(remoteIndexForServiceAccountToUse);
+                        svcAcctsUsageOrder.Remove(serviceAccountPreviouslyUsed);
+                        svcAcctsUsageOrder.Add(serviceAccountPreviouslyUsed);
                     }
-                    else
-                    {
-                        var serviceAccount = svcAccountLine.Split("/").LastOrDefault();
-
-                        if (string.IsNullOrEmpty(serviceAccount))
-                        {
-                            indexForServiceAccountToUse = 0;
-                        }
-                        else
-                        {
-                            var indexOfServiceAccount = svcAcctsUsageOrder.FindIndex(sa => sa.FilePath.Contains(serviceAccount));
-
-                            var indexToUseForCurrentRemote = "???";
-                        }
-
-                    }
-
-
-
-
-
-
                 }
 
-                serviceAccountUsageOrderByGroup.Add(serviceAccountFolder.Key, (svcAcctsUsageOrder, 0));
+                serviceAccountUsageOrderByGroup.Add(serviceAccountFolder.Key, svcAcctsUsageOrder);
+            }
 
+            return serviceAccountUsageOrderByGroup;
+        }
 
+        private static async Task<int> FindPreviousServiceAccountUsedForRemote(List<ServiceAccount> svcAcctsUsageOrder, string remote)
+        {
+            var bashResult = await $"rclone config show {remote}:".Bash();
+
+            var lines = bashResult.Split("\n");
+
+            var svcAccountLine = lines.FirstOrDefault(l => l.Contains("service_account_file"));
+
+            if (string.IsNullOrEmpty(svcAccountLine))
+            {
+                return 0;
+            }
+            else
+            {
+                var serviceAccount = svcAccountLine.Split("/").LastOrDefault();
+
+                if (string.IsNullOrEmpty(serviceAccount))
+                {
+                    return 0;
+                }
+
+                int indexOfServiceAccount = svcAcctsUsageOrder.FindIndex(sa => sa.FilePath.Contains(serviceAccount));
+
+                return indexOfServiceAccount == -1 ? 0 : indexOfServiceAccount;
             }
         }
 
@@ -120,44 +123,11 @@ namespace Linuxtesting
             return largestNoServiceAccounts;
         }
 
-        private static async Task<SARotateConfig> ParseSARotateYamlConfig(string configAbsolutePath)
-        {
-            if (string.IsNullOrEmpty(configAbsolutePath))
-            {
-                Console.WriteLine("configAbsolutePath missing as argument");
-                throw new ArgumentException("Config file not found");
-            }
-
-            using (var streamReader = new StreamReader(configAbsolutePath))
-            {
-                if (File.Exists(configAbsolutePath))
-                {
-                    string fileContent = await streamReader.ReadToEndAsync();
-
-                    try
-                    {
-                        IDeserializer deserializer = new DeserializerBuilder()
-                            .WithNamingConvention(UnderscoredNamingConvention.Instance)
-                            .IgnoreUnmatchedProperties()
-                            .Build();
-
-                        return deserializer.Deserialize<SARotateConfig>(fileContent);
-                    }
-                    catch (Exception)
-                    {
-                        throw new ArgumentException("Config file invalid format");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Config file {configAbsolutePath} does not exist");
-                    throw new ArgumentException("Config file not found");
-                }
-            }
-        }
-
         private static async Task<List<ServiceAccount>> ParseSvcAccts(string serviceAccountDirectory)
         {
+#if DEBUG
+            serviceAccountDirectory = "/home/shadowspy/svcaccts";
+#endif
             var accountCollections = new List<ServiceAccount>();
 
             IEnumerable<string> fileNames = Directory.EnumerateFiles(serviceAccountDirectory, "*", new EnumerationOptions() { RecurseSubdirectories = true });

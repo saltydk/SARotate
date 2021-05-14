@@ -2,7 +2,7 @@
 
 namespace Linuxtesting.Models.Google
 {
-    internal class ServiceAccount
+    public class ServiceAccount
     {
         [JsonProperty("project_id")]
         public string ProjectId { get; set; }
