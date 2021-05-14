@@ -1,6 +1,8 @@
-﻿using Linuxtesting.Models.Google;
+﻿using Linuxtesting.Models;
+using Linuxtesting.Models.Google;
 using Newtonsoft.Json;
 using Serilog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -61,7 +63,12 @@ namespace Linuxtesting
         {
             var bashResult = await $"rclone config show {remote}:".Bash();
 
-            var lines = bashResult.Split("\n");
+            if (bashResult.exitCode != (int)ExitCode.Success)
+            {
+                throw new Exception(bashResult.result);
+            }
+
+            var lines = bashResult.result.Split("\n");
 
             var svcAccountLine = lines.FirstOrDefault(l => l.Contains("service_account_file"));
 

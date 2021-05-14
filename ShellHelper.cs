@@ -6,9 +6,9 @@ namespace Linuxtesting
 {
     public static class ShellHelper
     {
-        public static Task<string> Bash(this string cmd)
+        public static Task<(string result, int exitCode)> Bash(this string cmd)
         {
-            var source = new TaskCompletionSource<string>();
+            var source = new TaskCompletionSource<(string, int)>();
             var escapedArgs = cmd.Replace("\"", "\\\"");
             var process = new Process
             {
@@ -29,7 +29,8 @@ namespace Linuxtesting
                 {
                     var output = process.StandardOutput.ReadToEnd();
                     var result = $"STDOUT:{output}";
-                    source.SetResult(result);
+
+                    source.SetResult((result, process.ExitCode));
                 }
                 else
                 {
@@ -37,7 +38,7 @@ namespace Linuxtesting
 
                     var result = $"STDERR:{error}";
 
-                    source.SetResult(result);
+                    source.SetResult((result, process.ExitCode));
                 }
 
                 process.Dispose();

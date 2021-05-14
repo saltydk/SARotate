@@ -11,5 +11,7 @@ namespace Linuxtesting
         [YamlDotNet.Serialization.YamlMember(Alias = "main")]
         ///svcAcctGroup absolute path -> remote -> connection info 
         public Dictionary<string, Dictionary<string, string>> MainConfig { get; set; }
+        [YamlDotNet.Serialization.YamlMember(Alias = "notification")]
+        public NotificationConfig NotificationConfig { get; set; }
     }
 }
