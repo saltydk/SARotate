@@ -78,7 +78,7 @@ namespace Linuxtesting
 
                 List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcacctsJsons);
 
-                foreach (string? remote in yamlConfigContent.MainConfig[serviceAccountFolder.Key].Keys)
+                foreach (string remote in yamlConfigContent.MainConfig[serviceAccountFolder.Key].Keys)
                 {
                     string previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote);
 
@@ -216,34 +216,37 @@ namespace Linuxtesting
                     }
 
                     var remoteConfig = yamlConfigContent.MainConfig[serviceAccountGroup.Key];
-                    var remote = remoteConfig.Keys.First(); //only 1 value, but need dictionary to parse yaml
-                    var addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
-                    var nextServiceAccount = serviceAccountGroup.Value.First();
 
-                    var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
-                    var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\": -o service_account_file=\"{nextServiceAccount.FilePath}\"";
-
-                    string commandForCurrentServiceAccountGroupRemote = rCloneCommand + rcCommandAddressParameter + rcCommandBackendCommandParameter;
-
-                    var bashResult = await commandForCurrentServiceAccountGroupRemote.Bash();
-
-                    if (bashResult.exitCode != (int)ExitCode.Success)
+                    foreach (var remote in remoteConfig.Keys)
                     {
-                        await SendAppriseNotification(yamlConfigContent, $"Could not swap service account for remote {remote}", LogLevel.Error);
-                    }
-                    else
-                    {
-                        serviceAccountGroup.Value.Remove(nextServiceAccount);
-                        serviceAccountGroup.Value.Add(nextServiceAccount);
+                        var addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
+                        var nextServiceAccount = serviceAccountGroup.Value.First();
 
-                        var stdoutputJson = bashResult
-                        .result
-                        .Split("STDOUT:")
-                        .Last();
+                        var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
+                        var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\": -o service_account_file=\"{nextServiceAccount.FilePath}\"";
 
-                        var rcloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
-                        await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rcloneCommandResult);
-                    }
+                        string commandForCurrentServiceAccountGroupRemote = rCloneCommand + rcCommandAddressParameter + rcCommandBackendCommandParameter;
+
+                        var bashResult = await commandForCurrentServiceAccountGroupRemote.Bash();
+
+                        if (bashResult.exitCode != (int)ExitCode.Success)
+                        {
+                            await SendAppriseNotification(yamlConfigContent, $"Could not swap service account for remote {remote}", LogLevel.Error);
+                        }
+                        else
+                        {
+                            serviceAccountGroup.Value.Remove(nextServiceAccount);
+                            serviceAccountGroup.Value.Add(nextServiceAccount);
+
+                            var stdoutputJson = bashResult
+                            .result
+                            .Split("STDOUT:")
+                            .Last();
+
+                            var rcloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
+                            await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rcloneCommandResult);
+                        }
+                    }                    
                 }
 
                 var timeoutMilliSeconds = yamlConfigContent.GlobalConfig.SleepTime * 1000;
