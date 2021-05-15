@@ -69,7 +69,7 @@ namespace Linuxtesting
                       .Enrich.With<GenericLogEnricher>()
                       .WriteTo.File(logPath,
                         restrictedToMinimumLevel: minimumLogEventLevel,
-                        fileSizeLimitBytes: 5000000,
+                        fileSizeLimitBytes: fileSizeLimitBytes,
                         rollingInterval: rollingInterval,
                         retainedFileCountLimit: retainedFileCountLimit)
                       .CreateLogger();
