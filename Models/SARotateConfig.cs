@@ -1,17 +1,57 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace Linuxtesting
 {
     public class SARotateConfig
     {
-        [YamlDotNet.Serialization.YamlMember(Alias = "rclone")]
+        [YamlMember(Alias = "rclone")]
         public RCloneConfig RCloneConfig { get; set; }
-        [YamlDotNet.Serialization.YamlMember(Alias = "global")]
+        [YamlMember(Alias = "global")]
         public GlobalConfig GlobalConfig { get; set; }
-        [YamlDotNet.Serialization.YamlMember(Alias = "main")]
+        [YamlMember(Alias = "main")]
         ///svcAcctGroup absolute path -> remote -> connection info 
         public Dictionary<string, Dictionary<string, string>> MainConfig { get; set; }
-        [YamlDotNet.Serialization.YamlMember(Alias = "notification")]
+        [YamlMember(Alias = "notification")]
         public NotificationConfig NotificationConfig { get; set; }
+
+        public static SARotateConfig ParseSARotateYamlConfig(string configAbsolutePath)
+        {
+            if (string.IsNullOrEmpty(configAbsolutePath))
+            {
+                Console.WriteLine("configAbsolutePath missing as argument");
+                throw new ArgumentException("Config file not found");
+            }
+
+            using (var streamReader = new StreamReader(configAbsolutePath))
+            {
+                if (File.Exists(configAbsolutePath))
+                {
+                    string fileContent = streamReader.ReadToEnd();
+
+                    try
+                    {
+                        IDeserializer deserializer = new DeserializerBuilder()
+                            .WithNamingConvention(UnderscoredNamingConvention.Instance)
+                            .IgnoreUnmatchedProperties()
+                            .Build();
+
+                        return deserializer.Deserialize<SARotateConfig>(fileContent);
+                    }
+                    catch (Exception)
+                    {
+                        throw new ArgumentException("Config file invalid format");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Config file {configAbsolutePath} does not exist");
+                    throw new ArgumentException("Config file not found");
+                }
+            }
+        }
     }
 }

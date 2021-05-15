@@ -1,13 +1,13 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SARotate.Infrastructure;
 using Serilog;
+using Serilog.Events;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 
 namespace Linuxtesting
 {
@@ -28,8 +28,6 @@ namespace Linuxtesting
 
             using var host = CreateHostBuilder(args).Build();
 
-            Console.TreatControlCAsInput = false;
-
             Log.Information("SARotate started");
 
             await host.RunAsync(cts.Token);
@@ -37,31 +35,49 @@ namespace Linuxtesting
 
         private static IHostBuilder CreateHostBuilder(string[] args)
         {
-           return Host.CreateDefaultBuilder()
+            var cwd = Directory.GetCurrentDirectory();
+
+            // Build configuration
+            _configuration = new ConfigurationBuilder()
+                .SetBasePath(cwd)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddCommandLine(args)
+                .Build();
+
+            string configAbsolutePath = _configuration["config"] ?? cwd + "/config.yaml";
+
+            SARotateConfig config = SARotateConfig.ParseSARotateYamlConfig(configAbsolutePath);
+
+            return Host.CreateDefaultBuilder()
                 .ConfigureHostConfiguration(configHost =>
                 {
                     configHost.SetBasePath(Directory.GetCurrentDirectory());
 
-                    // Build configuration
-                    _configuration = new ConfigurationBuilder()
-                        .SetBasePath(Directory.GetParent(AppContext.BaseDirectory)?.FullName ?? Directory.GetCurrentDirectory())
-                        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                        .AddCommandLine(args)
-                        .Build();
+                    string logPath = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:path"] ?? cwd + "/log.log";
+                    string minimumLogLevel = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:restrictedToMinimumLevel"] ?? "Verbose";
+                    string rollingIntervalConfig = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:rollingInterval"] ?? "Day";
+                    int fileSizeLimitBytes = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:fileSizeLimitBytes"] ?? "5000000");
+                    bool rollOnFileSizeLimit = bool.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:rollOnFileSizeLimit"] ?? "true");
+                    int retainedFileCountLimit = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:retainedFileCountLimit"] ?? "5");
+
+                    LogEventLevel minimumLogEventLevel = ConvertMinimumLogLevelToLogEventLevel(minimumLogLevel);
+                    RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);                   
 
                     var logger = new LoggerConfiguration()
-                      .ReadFrom.Configuration(_configuration)
-                      //.Enrich.
+                      .Enrich.FromLogContext()
+                      .Enrich.WithProperty("Application", "SARotate")
+                      .Enrich.With<GenericLogEnricher>()
+                      .WriteTo.File(logPath,
+                        restrictedToMinimumLevel: minimumLogEventLevel,
+                        fileSizeLimitBytes: 5000000,
+                        rollingInterval: rollingInterval,
+                        retainedFileCountLimit: retainedFileCountLimit)
                       .CreateLogger();
 
                     Log.Logger = logger;
                 })
                 .ConfigureServices(services =>
                 {
-                    string configAbsolutePath = _configuration["config"] ?? Directory.GetCurrentDirectory() + "/config.yaml";
-
-                    SARotateConfig config = ParseSARotateYamlConfig(configAbsolutePath);
-
                     services.AddHostedService<SARotate>();
                     services.AddSingleton(config);
                     services.AddSingleton(_configuration);
@@ -69,39 +85,43 @@ namespace Linuxtesting
                 .UseSerilog();
         }
 
-        private static SARotateConfig ParseSARotateYamlConfig(string configAbsolutePath)
+        private static RollingInterval ConvertRollingIntervalConfigValueToEnum(string rollingInterval)
         {
-            if (string.IsNullOrEmpty(configAbsolutePath))
+            switch (rollingInterval.ToLower())
             {
-                Console.WriteLine("configAbsolutePath missing as argument");
-                throw new ArgumentException("Config file not found");
+                case "infinite":
+                    return RollingInterval.Infinite;
+                case "year":
+                    return RollingInterval.Year;
+                case "month":
+                    return RollingInterval.Month;
+                case "day":
+                    return RollingInterval.Day;
+                case "hour":
+                    return RollingInterval.Hour;
+                case "minute":
+                    return RollingInterval.Minute;
+                default:
+                    return RollingInterval.Day;
             }
+        }
 
-            using (var streamReader = new StreamReader(configAbsolutePath))
+        private static LogEventLevel ConvertMinimumLogLevelToLogEventLevel(string minimumLogLevel)
+        {
+            switch (minimumLogLevel.ToLower())
             {
-                if (File.Exists(configAbsolutePath))
-                {
-                    string fileContent = streamReader.ReadToEnd();
-
-                    try
-                    {
-                        IDeserializer deserializer = new DeserializerBuilder()
-                            .WithNamingConvention(UnderscoredNamingConvention.Instance)
-                            .IgnoreUnmatchedProperties()
-                            .Build();
-
-                        return deserializer.Deserialize<SARotateConfig>(fileContent);
-                    }
-                    catch (Exception)
-                    {
-                        throw new ArgumentException("Config file invalid format");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Config file {configAbsolutePath} does not exist");
-                    throw new ArgumentException("Config file not found");
-                }
+                case "verbose":
+                    return LogEventLevel.Verbose;
+                case "debug":
+                    return LogEventLevel.Debug;
+                case "information":
+                    return LogEventLevel.Information;
+                case "error":
+                    return LogEventLevel.Error;
+                case "fatal":
+                    return LogEventLevel.Fatal;
+                default:
+                    return LogEventLevel.Information;
             }
         }
     }
