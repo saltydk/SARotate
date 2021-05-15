@@ -46,7 +46,7 @@ namespace Linuxtesting
 
             string configAbsolutePath = _configuration["config"] ?? cwd + "/config.yaml";
 
-            SARotateConfig config = SARotateConfig.ParseSARotateYamlConfig(configAbsolutePath);
+            SARotateConfig saRotateConfig = SARotateConfig.ParseSARotateYamlConfig(configAbsolutePath);
 
             return Host.CreateDefaultBuilder()
                 .ConfigureHostConfiguration(configHost =>
@@ -54,13 +54,13 @@ namespace Linuxtesting
                     configHost.SetBasePath(Directory.GetCurrentDirectory());
 
                     string logPath = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:path"] ?? cwd + "/log.log";
-                    string minimumLogLevel = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:restrictedToMinimumLevel"] ?? "Verbose";
+                    string minimumLogLevelConfig = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:restrictedToMinimumLevel"] ?? "Verbose";
                     string rollingIntervalConfig = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:rollingInterval"] ?? "Day";
                     int fileSizeLimitBytes = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:fileSizeLimitBytes"] ?? "5000000");
                     bool rollOnFileSizeLimit = bool.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:rollOnFileSizeLimit"] ?? "true");
                     int retainedFileCountLimit = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:retainedFileCountLimit"] ?? "5");
 
-                    LogEventLevel minimumLogEventLevel = ConvertMinimumLogLevelToLogEventLevel(minimumLogLevel);
+                    LogEventLevel minimumLogEventLevel = ConvertMinimumLogLevelConfigToLogEventLevel(minimumLogLevelConfig);
                     RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);                   
 
                     var logger = new LoggerConfiguration()
@@ -79,7 +79,7 @@ namespace Linuxtesting
                 .ConfigureServices(services =>
                 {
                     services.AddHostedService<SARotate>();
-                    services.AddSingleton(config);
+                    services.AddSingleton(saRotateConfig);
                     services.AddSingleton(_configuration);
                 })
                 .UseSerilog();
@@ -106,7 +106,7 @@ namespace Linuxtesting
             }
         }
 
-        private static LogEventLevel ConvertMinimumLogLevelToLogEventLevel(string minimumLogLevel)
+        private static LogEventLevel ConvertMinimumLogLevelConfigToLogEventLevel(string minimumLogLevel)
         {
             switch (minimumLogLevel.ToLower())
             {
