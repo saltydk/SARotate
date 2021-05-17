@@ -29,17 +29,17 @@ namespace Linuxtesting
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            SARotateConfig yamlConfigContent = _SARotateConfig;
-
             try
             {
-                (Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, string rCloneCommand) = await InitializeRCloneCommand(yamlConfigContent);
+                Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup = await GenerateServiceAccountUsageOrderByGroup(_SARotateConfig);
 
-                await RunSwappingService(yamlConfigContent, serviceAccountUsageOrderByGroup, rCloneCommand, cancellationToken);
+                string rCloneCommand = InitializeRCloneCommand(_SARotateConfig);
+
+                await RunSwappingService(_SARotateConfig, serviceAccountUsageOrderByGroup, rCloneCommand, cancellationToken);
             }
             catch (Exception e)
             {
-                await SendAppriseNotification(yamlConfigContent, e.Message, LogLevel.Error);
+                await SendAppriseNotification(_SARotateConfig, e.Message, LogLevel.Error);
                 throw;
             }
         }
@@ -49,10 +49,8 @@ namespace Linuxtesting
             return Task.CompletedTask;
         }
 
-        public async Task<(Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, string rCloneCommand)> InitializeRCloneCommand(SARotateConfig yamlConfigContent)
+        public static string InitializeRCloneCommand(SARotateConfig yamlConfigContent)
         {
-            Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup = await GenerateServiceAccountUsageOrderByGroup(yamlConfigContent);
-
             string rcloneCommand = "rclone rc";
 
             bool rcloneConfigUserExists = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.User) && !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.Pass);
@@ -61,7 +59,7 @@ namespace Linuxtesting
                 rcloneCommand += $" --rc-user={yamlConfigContent.RCloneConfig.User} --rc-pass={yamlConfigContent.RCloneConfig.Pass}";
             }
 
-            return (serviceAccountUsageOrderByGroup, rcloneCommand);
+            return rcloneCommand;
         }
 
         private async Task<Dictionary<string, List<ServiceAccount>>> GenerateServiceAccountUsageOrderByGroup(SARotateConfig yamlConfigContent)
