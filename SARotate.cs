@@ -277,16 +277,16 @@ namespace Linuxtesting
         {
             if (yamlConfigContent.NotificationConfig.AppriseNotificationsErrorsOnly && logLevel < LogLevel.Error)
             {
-                LogMessage($"sent apprise notification: {logMessage}", logLevel);
+                LogMessage($"Information log not sent via apprise notification due to errors_only notifications: {logMessage}", logLevel);
             }
-            else if (yamlConfigContent.NotificationConfig.AppriseServices.Any())
+            else if (yamlConfigContent.NotificationConfig.AppriseServices.Any(svc => !string.IsNullOrWhiteSpace(svc)))
             {
                 string appriseCommand = $"apprise -vv ";
                 appriseCommand += logLevel >= LogLevel.Error ? "-t 'ERROR!!!' " : "";
                 var escapedLogMessage = logMessage.Replace("'", "´").Replace("\"", "´");
                 appriseCommand += $"-b '{escapedLogMessage}' ";
 
-                foreach (var appriseService in yamlConfigContent.NotificationConfig.AppriseServices)
+                foreach (var appriseService in yamlConfigContent.NotificationConfig.AppriseServices.Where(svc => !string.IsNullOrWhiteSpace(svc)))
                 {
                     appriseCommand += $"'{appriseService}' ";
                 }
