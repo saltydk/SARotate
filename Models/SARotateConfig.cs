@@ -18,17 +18,17 @@ namespace Linuxtesting
         [YamlMember(Alias = "notification")]
         public NotificationConfig NotificationConfig { get; set; }
 
-        public static SARotateConfig ParseSARotateYamlConfig(string configAbsolutePath)
+        public static SARotateConfig? ParseSARotateYamlConfig(string configAbsolutePath)
         {
             if (string.IsNullOrEmpty(configAbsolutePath))
             {
                 Console.WriteLine("configAbsolutePath missing as argument");
-                throw new ArgumentException("Config file not found");
+                throw new ArgumentException("Config file path missing");
             }
 
-            using (var streamReader = new StreamReader(configAbsolutePath))
+            if (File.Exists(configAbsolutePath))
             {
-                if (File.Exists(configAbsolutePath))
+                using (var streamReader = new StreamReader(configAbsolutePath))
                 {
                     string fileContent = streamReader.ReadToEnd();
 
@@ -46,12 +46,12 @@ namespace Linuxtesting
                         throw new ArgumentException("Config file invalid format");
                     }
                 }
-                else
-                {
-                    Console.WriteLine($"Config file {configAbsolutePath} does not exist");
-                    throw new ArgumentException("Config file not found");
-                }
             }
-        }
+            else
+            {
+                Console.WriteLine($"Could not access config file at '{configAbsolutePath}'.");
+                return null;
+            }
+        }        
     }
 }

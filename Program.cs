@@ -46,7 +46,12 @@ namespace Linuxtesting
 
             string configAbsolutePath = _configuration["config"] ?? cwd + "/config.yaml";
 
-            SARotateConfig saRotateConfig = SARotateConfig.ParseSARotateYamlConfig(configAbsolutePath);
+            SARotateConfig? saRotateConfig = SARotateConfig.ParseSARotateYamlConfig(configAbsolutePath);
+
+            if (saRotateConfig == null)
+            {
+                Environment.Exit(-1);
+            }
 
             return Host.CreateDefaultBuilder()
                 .ConfigureHostConfiguration(configHost =>
