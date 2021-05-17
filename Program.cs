@@ -66,7 +66,7 @@ namespace Linuxtesting
                     int retainedFileCountLimit = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:retainedFileCountLimit"] ?? "5");
 
                     LogEventLevel minimumLogEventLevel = ConvertMinimumLogLevelConfigToLogEventLevel(minimumLogLevelConfig);
-                    RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);                   
+                    RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);
 
                     var logger = new LoggerConfiguration()
                       .Enrich.FromLogContext()

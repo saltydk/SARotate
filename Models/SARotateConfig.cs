@@ -52,6 +52,6 @@ namespace Linuxtesting
                 Console.WriteLine($"Could not access config file at '{configAbsolutePath}'.");
                 return null;
             }
-        }        
+        }
     }
 }

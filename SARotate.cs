@@ -198,13 +198,13 @@ namespace Linuxtesting
         }
 
         private async Task RunSwappingService(
-            SARotateConfig yamlConfigContent, 
-            Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup, 
-            string rCloneCommand, 
+            SARotateConfig yamlConfigContent,
+            Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup,
+            string rCloneCommand,
             CancellationToken cancellationToken)
         {
             bool swapServiceAccounts = true;
-            while(swapServiceAccounts)
+            while (swapServiceAccounts)
             {
                 swapServiceAccounts &= !cancellationToken.IsCancellationRequested;
 
@@ -246,7 +246,7 @@ namespace Linuxtesting
                             var rcloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
                             await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rcloneCommandResult);
                         }
-                    }                    
+                    }
                 }
 
                 var timeoutMilliSeconds = yamlConfigContent.GlobalConfig.SleepTime * 1000;
