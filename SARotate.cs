@@ -59,6 +59,12 @@ namespace Linuxtesting
                 rcloneCommand += $" --rc-user={yamlConfigContent.RCloneConfig.User} --rc-pass={yamlConfigContent.RCloneConfig.Pass}";
             }
 
+            bool rcloneConfigOverriden = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.ConfigAbsolutePath);
+            if (rcloneConfigOverriden)
+            {
+                rcloneCommand += $" --rc-config={yamlConfigContent.RCloneConfig.ConfigAbsolutePath}";
+            }
+
             return rcloneCommand;
         }
 
