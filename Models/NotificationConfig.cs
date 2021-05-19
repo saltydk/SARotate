@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Linuxtesting
+namespace SARotate.Models
 {
     public class NotificationConfig
     {

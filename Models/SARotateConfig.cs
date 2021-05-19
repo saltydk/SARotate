@@ -4,7 +4,7 @@ using System.IO;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace Linuxtesting
+namespace SARotate.Models
 {
     public class SARotateConfig
     {

@@ -1,18 +1,19 @@
-﻿using Linuxtesting.Models;
-using Linuxtesting.Models.Google;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LogLevel = Linuxtesting.Models.LogLevel;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using SARotate.Models;
+using SARotate.Models.Enums;
+using SARotate.Models.Google;
+using LogLevel = SARotate.Models.Enums.LogLevel;
 
-namespace Linuxtesting
+namespace SARotate
 {
     public class SARotate : IHostedService
     {

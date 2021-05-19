@@ -1,15 +1,16 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using SARotate.Infrastructure;
-using Serilog;
-using Serilog.Events;
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using SARotate.Infrastructure;
+using SARotate.Models;
+using Serilog;
+using Serilog.Events;
 
-namespace Linuxtesting
+namespace SARotate
 {
     class Program
     {

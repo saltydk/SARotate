@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace Linuxtesting
+namespace SARotate
 {
     public static class ShellHelper
     {

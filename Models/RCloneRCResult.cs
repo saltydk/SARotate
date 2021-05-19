@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Linuxtesting.Models
+namespace SARotate.Models
 {
     public class RCloneRCResult
     {

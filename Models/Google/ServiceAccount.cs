@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Linuxtesting.Models.Google
+namespace SARotate.Models.Google
 {
     public class ServiceAccount
     {

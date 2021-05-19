@@ -1,4 +1,4 @@
-﻿namespace Linuxtesting
+﻿namespace SARotate.Models
 {
     public class RCloneConfig
     {

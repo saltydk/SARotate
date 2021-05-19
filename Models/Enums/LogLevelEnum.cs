@@ -1,4 +1,4 @@
-﻿namespace Linuxtesting.Models
+﻿namespace SARotate.Models.Enums
 {
     public enum LogLevel
     {
