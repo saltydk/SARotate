@@ -59,7 +59,7 @@ namespace SARotate
                 {
                     configHost.SetBasePath(Directory.GetCurrentDirectory());
 
-                    string logPath = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:path"] ?? cwd + "/log.log";
+                    string logPath = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:path"] ?? cwd + "/sarotate.log";
                     string minimumLogLevelConfig = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:restrictedToMinimumLevel"] ?? "Verbose";
                     string rollingIntervalConfig = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:rollingInterval"] ?? "Day";
                     int fileSizeLimitBytes = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:fileSizeLimitBytes"] ?? "5000000");
@@ -93,42 +93,29 @@ namespace SARotate
 
         private static RollingInterval ConvertRollingIntervalConfigValueToEnum(string rollingInterval)
         {
-            switch (rollingInterval.ToLower())
+            return rollingInterval.ToLower() switch
             {
-                case "infinite":
-                    return RollingInterval.Infinite;
-                case "year":
-                    return RollingInterval.Year;
-                case "month":
-                    return RollingInterval.Month;
-                case "day":
-                    return RollingInterval.Day;
-                case "hour":
-                    return RollingInterval.Hour;
-                case "minute":
-                    return RollingInterval.Minute;
-                default:
-                    return RollingInterval.Day;
-            }
+                "infinite" => RollingInterval.Infinite,
+                "year" => RollingInterval.Year,
+                "month" => RollingInterval.Month,
+                "day" => RollingInterval.Day,
+                "hour" => RollingInterval.Hour,
+                "minute" => RollingInterval.Minute,
+                _ => RollingInterval.Day
+            };
         }
 
         private static LogEventLevel ConvertMinimumLogLevelConfigToLogEventLevel(string minimumLogLevel)
         {
-            switch (minimumLogLevel.ToLower())
+            return minimumLogLevel.ToLower() switch
             {
-                case "verbose":
-                    return LogEventLevel.Verbose;
-                case "debug":
-                    return LogEventLevel.Debug;
-                case "information":
-                    return LogEventLevel.Information;
-                case "error":
-                    return LogEventLevel.Error;
-                case "fatal":
-                    return LogEventLevel.Fatal;
-                default:
-                    return LogEventLevel.Information;
-            }
+                "verbose" => LogEventLevel.Verbose,
+                "debug" => LogEventLevel.Debug,
+                "information" => LogEventLevel.Information,
+                "error" => LogEventLevel.Error,
+                "fatal" => LogEventLevel.Fatal,
+                _ => LogEventLevel.Information,
+            };
         }
     }
 }

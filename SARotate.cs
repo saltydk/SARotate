@@ -73,7 +73,7 @@ namespace SARotate
         {
             var serviceAccountUsageOrderByGroup = new Dictionary<string, List<ServiceAccount>>();
 
-            foreach (var serviceAccountFolder in yamlConfigContent.MainConfig)
+            foreach (var serviceAccountFolder in yamlConfigContent.RemoteConfig)
             {
                 string serviceAccountsDirectoryAbsolutePath = serviceAccountFolder.Key;
 
@@ -83,7 +83,7 @@ namespace SARotate
 
                 List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcacctsJsons);
 
-                foreach (string remote in yamlConfigContent.MainConfig[serviceAccountFolder.Key].Keys)
+                foreach (string remote in yamlConfigContent.RemoteConfig[serviceAccountFolder.Key].Keys)
                 {
                     string previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote);
 
@@ -220,7 +220,7 @@ namespace SARotate
                         return;
                     }
 
-                    var remoteConfig = yamlConfigContent.MainConfig[serviceAccountGroup.Key];
+                    var remoteConfig = yamlConfigContent.RemoteConfig[serviceAccountGroup.Key];
 
                     foreach (var remote in remoteConfig.Keys)
                     {
@@ -254,7 +254,7 @@ namespace SARotate
                     }
                 }
 
-                var timeoutMilliSeconds = yamlConfigContent.GlobalConfig.SleepTime * 1000;
+                var timeoutMilliSeconds = yamlConfigContent.RCloneConfig.SleepTime * 1000;
 
                 try
                 {
@@ -272,7 +272,7 @@ namespace SARotate
             var currentFile = rcloneCommandResult.Result.ServiceAccountFile.Current.Split("/").LastOrDefault();
             var previousFile = rcloneCommandResult.Result.ServiceAccountFile.Previous.Split("/").LastOrDefault();
 
-            var logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.GlobalConfig.SleepTime} seconds";
+            var logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.RCloneConfig.SleepTime} seconds";
             LogMessage(logMessage, LogLevel.Information);
             LogMessage(stdoutputJson, LogLevel.Debug);
             await SendAppriseNotification(yamlConfigContent, logMessage);

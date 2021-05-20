@@ -12,9 +12,9 @@ namespace SARotate.Models
         public RCloneConfig RCloneConfig { get; set; }
         [YamlMember(Alias = "global")]
         public GlobalConfig GlobalConfig { get; set; }
-        [YamlMember(Alias = "main")]
+        [YamlMember(Alias = "remotes")]
         ///svcAcctGroup absolute path -> remote -> connection info 
-        public Dictionary<string, Dictionary<string, string>> MainConfig { get; set; }
+        public Dictionary<string, Dictionary<string, string>> RemoteConfig { get; set; }
         [YamlMember(Alias = "notification")]
         public NotificationConfig NotificationConfig { get; set; }
 

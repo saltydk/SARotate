@@ -8,5 +8,7 @@
         public string User { get; set; }
         [YamlDotNet.Serialization.YamlMember(Alias = "rc_pass")]
         public string Pass { get; set; }
+        [YamlDotNet.Serialization.YamlMember(Alias = "sleeptime")]
+        public int SleepTime { get; set; }
     }
 }
