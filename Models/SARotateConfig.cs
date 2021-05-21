@@ -10,45 +10,42 @@ namespace SARotate.Models
     {
         [YamlMember(Alias = "rclone")]
         public RCloneConfig RCloneConfig { get; set; }
+        
         [YamlMember(Alias = "remotes")]
-        ///svcAcctGroup absolute path -> remote -> connection info 
         public Dictionary<string, Dictionary<string, string>> RemoteConfig { get; set; }
-        [YamlMember(Alias = "notification")]
-        public NotificationConfig NotificationConfig { get; set; }
 
+        /// <summary>
+        /// svcAcctGroup absolute path -> remote -> connection info 
+        /// </summary>
+        [YamlMember(Alias = "notification")] public NotificationConfig NotificationConfig { get; set; }
+
+        // ReSharper disable once InconsistentNaming
         public static SARotateConfig? ParseSARotateYamlConfig(string configAbsolutePath)
         {
-            if (string.IsNullOrEmpty(configAbsolutePath))
-            {
-                Console.WriteLine("configAbsolutePath missing as argument");
-                throw new ArgumentException("Config file path missing");
-            }
-
-            if (File.Exists(configAbsolutePath))
-            {
-                using (var streamReader = new StreamReader(configAbsolutePath))
-                {
-                    string fileContent = streamReader.ReadToEnd();
-
-                    try
-                    {
-                        IDeserializer deserializer = new DeserializerBuilder()
-                            .WithNamingConvention(UnderscoredNamingConvention.Instance)
-                            .IgnoreUnmatchedProperties()
-                            .Build();
-
-                        return deserializer.Deserialize<SARotateConfig>(fileContent);
-                    }
-                    catch (Exception)
-                    {
-                        throw new ArgumentException("Config file invalid format");
-                    }
-                }
-            }
-            else
+            if (!File.Exists(configAbsolutePath))
             {
                 Console.WriteLine($"Could not access config file at '{configAbsolutePath}'.");
                 return null;
+            }
+
+            using (var streamReader = new StreamReader(configAbsolutePath))
+            {
+                string fileContent = streamReader.ReadToEnd();
+
+                try
+                {
+                    IDeserializer deserializer = new DeserializerBuilder()
+                        .WithNamingConvention(UnderscoredNamingConvention.Instance)
+                        .IgnoreUnmatchedProperties()
+                        .Build();
+
+                    return deserializer.Deserialize<SARotateConfig>(fileContent);
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("Config file invalid format.");
+                    return null;
+                }
             }
         }
     }

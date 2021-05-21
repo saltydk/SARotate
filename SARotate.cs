@@ -208,57 +208,56 @@ namespace SARotate
             string rCloneCommand,
             CancellationToken cancellationToken)
         {
-            bool swapServiceAccounts = true;
+            var swapServiceAccounts = true;
             while (swapServiceAccounts)
             {
                 swapServiceAccounts &= !cancellationToken.IsCancellationRequested;
 
-                foreach (KeyValuePair<string, List<ServiceAccount>> serviceAccountGroup in serviceAccountUsageOrderByGroup)
+                foreach ((string? key, List<ServiceAccount>? value) in serviceAccountUsageOrderByGroup)
                 {
                     if (!swapServiceAccounts)
                     {
                         return;
                     }
 
-                    var remoteConfig = yamlConfigContent.RemoteConfig[serviceAccountGroup.Key];
+                    Dictionary<string, string>? remoteConfig = yamlConfigContent.RemoteConfig[key];
 
                     foreach (var remote in remoteConfig.Keys)
                     {
-                        var addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
-                        var nextServiceAccount = serviceAccountGroup.Value.First();
+                        string? addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
+                        ServiceAccount? nextServiceAccount = value.First();
 
                         var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
                         var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\": -o service_account_file=\"{nextServiceAccount.FilePath}\"";
 
                         string commandForCurrentServiceAccountGroupRemote = rCloneCommand + rcCommandAddressParameter + rcCommandBackendCommandParameter;
 
-                        var bashResult = await commandForCurrentServiceAccountGroupRemote.Bash();
+                        (string result, int exitCode) = await commandForCurrentServiceAccountGroupRemote.Bash();
 
-                        if (bashResult.exitCode != (int)ExitCode.Success)
+                        if (exitCode != (int)ExitCode.Success)
                         {
                             await SendAppriseNotification(yamlConfigContent, $"Could not swap service account for remote {remote}", LogLevel.Error);
                         }
                         else
                         {
-                            serviceAccountGroup.Value.Remove(nextServiceAccount);
-                            serviceAccountGroup.Value.Add(nextServiceAccount);
+                            value.Remove(nextServiceAccount);
+                            value.Add(nextServiceAccount);
 
-                            var stdoutputJson = bashResult
-                            .result
+                            string? stdoutputJson = result
                             .Split("STDOUT:")
                             .Last();
 
-                            var rcloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
-                            await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rcloneCommandResult);
+                            RCloneRCCommandResult? rCloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
+                            await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rCloneCommandResult);
                         }
                     }
                 }
 
-                var timeoutMilliSeconds = yamlConfigContent.RCloneConfig.SleepTime * 1000;
+                int timeoutMs = yamlConfigContent.RCloneConfig.SleepTime * 1000;
 
                 try
                 {
-                    await Task.Delay(timeoutMilliSeconds, cancellationToken);
+                    await Task.Delay(timeoutMs, cancellationToken);
                 }
                 catch
                 {
@@ -304,7 +303,7 @@ namespace SARotate
 
         private void LogMessage(string message, LogLevel level = LogLevel.Debug, params object[] args)
         {
-            Console.WriteLine(level.ToString() + " " + message);
+            Console.WriteLine(level + " " + message);
             switch (level)
             {
                 case LogLevel.Debug:
@@ -322,6 +321,8 @@ namespace SARotate
                 case LogLevel.Critical:
                     _logger.LogCritical(message, args);
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(level), level, null);
             }
         }
     }
