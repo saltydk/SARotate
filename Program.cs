@@ -12,6 +12,7 @@ using SARotate.Models;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using Serilog.Sinks.SystemConsole.Themes;
 
 namespace SARotate
 {
@@ -35,7 +36,6 @@ namespace SARotate
 
             AppDomain.CurrentDomain.ProcessExit += (s, e) =>
             {
-                Console.WriteLine("SARotate stopped");
                 Log.Information("SARotate stopped");
                 cts.Cancel();
             };
@@ -96,8 +96,6 @@ namespace SARotate
                     configAbsolutePath = o.Config;
                     logFilePath = o.LogFile;
                     verboseFlagExists = o.Verbose;
-                    Console.WriteLine("config flag is " + o.Config);
-                    Console.WriteLine("verbose flag is " + o.Verbose);
                 })
                 .WithNotParsed(o =>
                 {
@@ -133,6 +131,7 @@ namespace SARotate
                     fileSizeLimitBytes: fileSizeLimitBytes,
                     rollingInterval: rollingInterval,
                     retainedFileCountLimit: retainedFileCountLimit)
+                .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:j}{NewLine}{Properties:j}{NewLine}{Exception}")
                 .CreateLogger();
 
             Log.Logger = logger;

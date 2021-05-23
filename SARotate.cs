@@ -32,7 +32,13 @@ namespace SARotate
         {
             try
             {
-                Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup = await GenerateServiceAccountUsageOrderByGroup(_SARotateConfig);
+                Dictionary<string, List<ServiceAccount>>? serviceAccountUsageOrderByGroup = await GenerateServiceAccountUsageOrderByGroup(_SARotateConfig);
+
+                if (serviceAccountUsageOrderByGroup == null)
+                {
+                    //await SendAppriseNotification(_SARotateConfig, "Service accounts not found", LogLevel.Error);
+                    throw new ArgumentException("Service accounts not found");
+                }
 
                 string rCloneCommand = InitializeRCloneCommand(_SARotateConfig);
 
@@ -69,7 +75,7 @@ namespace SARotate
             return rcloneCommand;
         }
 
-        private async Task<Dictionary<string, List<ServiceAccount>>> GenerateServiceAccountUsageOrderByGroup(SARotateConfig yamlConfigContent)
+        private async Task<Dictionary<string, List<ServiceAccount>>?> GenerateServiceAccountUsageOrderByGroup(SARotateConfig yamlConfigContent)
         {
             var serviceAccountUsageOrderByGroup = new Dictionary<string, List<ServiceAccount>>();
 
@@ -77,26 +83,33 @@ namespace SARotate
             {
                 string serviceAccountsDirectoryAbsolutePath = serviceAccountFolder.Key;
 
-                List<ServiceAccount> svcacctsJsons = (await ParseSvcAccts(serviceAccountsDirectoryAbsolutePath))
-               .OrderBy(c => c.ClientEmail)
-               .ToList();
+                List<ServiceAccount>? svcAccts = await ParseSvcAccts(serviceAccountsDirectoryAbsolutePath);
 
-                List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcacctsJsons);
+                if (svcAccts == null || !svcAccts.Any())
+                {
+                    return null;
+                }
+
+                List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcAccts.OrderBy(c => c.ClientEmail).ToList());
 
                 foreach (string remote in yamlConfigContent.RemoteConfig[serviceAccountFolder.Key].Keys)
                 {
                     string previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote);
 
-                    if (!string.IsNullOrEmpty(previousServiceAccountUsed))
+                    if (string.IsNullOrEmpty(previousServiceAccountUsed))
                     {
-                        ServiceAccount? serviceAccount = svcAcctsUsageOrder.FirstOrDefault(sa => sa.FilePath.Contains(previousServiceAccountUsed));
-
-                        if (serviceAccount != null)
-                        {
-                            svcAcctsUsageOrder.Remove(serviceAccount);
-                            svcAcctsUsageOrder.Add(serviceAccount);
-                        }
+                        continue;
                     }
+
+                    ServiceAccount? serviceAccount = svcAcctsUsageOrder.FirstOrDefault(sa => sa.FilePath.Contains(previousServiceAccountUsed));
+
+                    if (serviceAccount == null)
+                    {
+                        continue;
+                    }
+
+                    svcAcctsUsageOrder.Remove(serviceAccount);
+                    svcAcctsUsageOrder.Add(serviceAccount);
                 }
 
                 serviceAccountUsageOrderByGroup.Add(serviceAccountFolder.Key, svcAcctsUsageOrder);
@@ -177,9 +190,14 @@ namespace SARotate
             return largestNoServiceAccounts;
         }
 
-        private async Task<List<ServiceAccount>> ParseSvcAccts(string serviceAccountDirectory)
+        private async Task<List<ServiceAccount>?> ParseSvcAccts(string serviceAccountDirectory)
         {
             var accountCollections = new List<ServiceAccount>();
+
+            if (!Directory.Exists(serviceAccountDirectory))
+            {
+                return null;
+            }
 
             IEnumerable<string> fileNames = Directory.EnumerateFiles(serviceAccountDirectory, "*", new EnumerationOptions() { RecurseSubdirectories = true });
 
@@ -213,19 +231,19 @@ namespace SARotate
             {
                 swapServiceAccounts &= !cancellationToken.IsCancellationRequested;
 
-                foreach ((string? key, List<ServiceAccount>? value) in serviceAccountUsageOrderByGroup)
+                foreach ((string key, List<ServiceAccount> value) in serviceAccountUsageOrderByGroup)
                 {
                     if (!swapServiceAccounts)
                     {
                         return;
                     }
 
-                    Dictionary<string, string>? remoteConfig = yamlConfigContent.RemoteConfig[key];
+                    Dictionary<string, string> remoteConfig = yamlConfigContent.RemoteConfig[key];
 
                     foreach (var remote in remoteConfig.Keys)
                     {
-                        string? addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
-                        ServiceAccount? nextServiceAccount = value.First();
+                        string addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
+                        ServiceAccount nextServiceAccount = value.First();
 
                         var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
                         var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\": -o service_account_file=\"{nextServiceAccount.FilePath}\"";
@@ -233,6 +251,8 @@ namespace SARotate
                         string commandForCurrentServiceAccountGroupRemote = rCloneCommand + rcCommandAddressParameter + rcCommandBackendCommandParameter;
 
                         (string result, int exitCode) = await commandForCurrentServiceAccountGroupRemote.Bash();
+
+                        LogMessage($"rclone stdout/err: {result}");
 
                         if (exitCode != (int)ExitCode.Success)
                         {
@@ -243,11 +263,11 @@ namespace SARotate
                             value.Remove(nextServiceAccount);
                             value.Add(nextServiceAccount);
 
-                            string? stdoutputJson = result
+                            string stdoutputJson = result
                             .Split("STDOUT:")
                             .Last();
 
-                            RCloneRCCommandResult? rCloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
+                            RCloneRCCommandResult rCloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
                             await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rCloneCommandResult);
                         }
                     }
@@ -272,22 +292,20 @@ namespace SARotate
             var previousFile = rcloneCommandResult.Result.ServiceAccountFile.Previous.Split("/").LastOrDefault();
 
             var logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.RCloneConfig.SleepTime} seconds";
-            LogMessage(logMessage, LogLevel.Information);
-            LogMessage(stdoutputJson, LogLevel.Debug);
+            LogMessage(stdoutputJson);
             await SendAppriseNotification(yamlConfigContent, logMessage);
         }
 
-        private async Task SendAppriseNotification(SARotateConfig yamlConfigContent, string logMessage, LogLevel logLevel = LogLevel.Information)
+        private async Task SendAppriseNotification(SARotateConfig yamlConfigContent, string logMessage, LogLevel logLevel = LogLevel.Debug)
         {
             if (yamlConfigContent.NotificationConfig.AppriseNotificationsErrorsOnly && logLevel < LogLevel.Error)
             {
-                LogMessage($"Information log not sent via apprise notification due to errors_only notifications: {logMessage}", logLevel);
+                LogMessage($"apprise notification not sent due to errors_only notifications: {logMessage}", logLevel);
             }
             else if (yamlConfigContent.NotificationConfig.AppriseServices.Any(svc => !string.IsNullOrWhiteSpace(svc)))
             {
                 string appriseCommand = $"apprise -vv ";
-                appriseCommand += logLevel >= LogLevel.Error ? "-t 'ERROR!!!' " : "";
-                var escapedLogMessage = logMessage.Replace("'", "´").Replace("\"", "´");
+                string escapedLogMessage = logMessage.Replace("'", "´").Replace("\"", "´");
                 appriseCommand += $"-b '{escapedLogMessage}' ";
 
                 foreach (var appriseService in yamlConfigContent.NotificationConfig.AppriseServices.Where(svc => !string.IsNullOrWhiteSpace(svc)))
@@ -295,15 +313,22 @@ namespace SARotate
                     appriseCommand += $"'{appriseService}' ";
                 }
 
-                await appriseCommand.Bash();
+                (string result, int exitCode) = await appriseCommand.Bash();
 
-                LogMessage($"sent apprise notification: {logMessage}", logLevel);
+                if (exitCode != (int)ExitCode.Success)
+                {
+                    LogMessage($"Unable to send apprise notification: {logMessage}", LogLevel.Error);
+                    LogMessage($"Apprise failure: {result}");
+                }
+                else
+                {
+                    LogMessage($"sent apprise notification: {logMessage}");
+                }
             }
         }
 
         private void LogMessage(string message, LogLevel level = LogLevel.Debug, params object[] args)
         {
-            Console.WriteLine(level + " " + message);
             switch (level)
             {
                 case LogLevel.Debug:
