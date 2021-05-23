@@ -47,7 +47,6 @@ namespace SARotate
             catch (Exception e)
             {
                 await SendAppriseNotification(_SARotateConfig, e.Message, LogLevel.Error);
-                throw;
             }
         }
 
@@ -279,9 +278,9 @@ namespace SARotate
                 {
                     await Task.Delay(timeoutMs, cancellationToken);
                 }
-                catch
+                catch (TaskCanceledException)
                 {
-
+                    //added to catch exception from ctrl+c program cancellation
                 }
             }
         }
