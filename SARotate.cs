@@ -15,10 +15,12 @@ using LogLevel = SARotate.Models.Enums.LogLevel;
 
 namespace SARotate
 {
+    // ReSharper disable once InconsistentNaming
     public class SARotate : IHostedService
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<SARotate> _logger;
+        // ReSharper disable once InconsistentNaming
         private readonly SARotateConfig _SARotateConfig;
 
         public SARotate(IConfiguration configuration, ILogger<SARotate> logger, SARotateConfig SARotateConfig)
