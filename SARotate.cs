@@ -36,7 +36,6 @@ namespace SARotate
 
                 if (serviceAccountUsageOrderByGroup == null)
                 {
-                    //await SendAppriseNotification(_SARotateConfig, "Service accounts not found", LogLevel.Error);
                     throw new ArgumentException("Service accounts not found");
                 }
 
