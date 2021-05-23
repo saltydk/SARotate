@@ -63,7 +63,7 @@ namespace SARotate
             bool rcloneConfigOverriden = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.ConfigAbsolutePath);
             if (rcloneConfigOverriden)
             {
-                rcloneCommand += $" --rc-config={yamlConfigContent.RCloneConfig.ConfigAbsolutePath}";
+                rcloneCommand += $" --config={yamlConfigContent.RCloneConfig.ConfigAbsolutePath}";
             }
 
             return rcloneCommand;
