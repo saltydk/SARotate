@@ -105,6 +105,7 @@ namespace SARotate
                     if (serviceAccount == null)
                     {
                         LogMessage("unable to find local file " + previousServiceAccountUsed);
+                        LogMessage("group accounts " + string.Join(",", svcAcctsUsageOrder.Select(sa => sa.FilePath)));
                         continue;
                     }
 
@@ -207,21 +208,21 @@ namespace SARotate
                 return null;
             }
 
-            IEnumerable<string> fileNames = Directory.EnumerateFiles(serviceAccountDirectory, "*", new EnumerationOptions() { RecurseSubdirectories = true });
+            IEnumerable<string> filePaths = Directory.EnumerateFiles(serviceAccountDirectory, "*", new EnumerationOptions() { RecurseSubdirectories = true });
 
-            foreach (string fileName in fileNames)
+            foreach (string filePath in filePaths)
             {
-                if (!fileName.ToLower().EndsWith(".json"))
+                if (!filePath.ToLower().EndsWith(".json"))
                 {
                     continue;
                 }
 
-                using (var streamReader = new StreamReader(fileName))
+                using (var streamReader = new StreamReader(filePath))
                 {
                     string fileJson = await streamReader.ReadToEndAsync();
 
                     ServiceAccount account = JsonConvert.DeserializeObject<ServiceAccount>(fileJson) ?? throw new ArgumentException("service account file structure is bad");
-                    account.FilePath = fileName;
+                    account.FilePath = filePath;
 
                     accountCollections.Add(account);
                 }
