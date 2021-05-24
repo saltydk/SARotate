@@ -88,11 +88,11 @@ namespace SARotate
                     return null;
                 }
 
-                List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcAccts.OrderBy(c => c.ClientEmail).ToList());
+                List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcAccts);
 
                 foreach (string remote in remotes.Keys)
                 {
-                    string previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote);
+                    string? previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote);
 
                     if (string.IsNullOrEmpty(previousServiceAccountUsed))
                     {
@@ -116,7 +116,7 @@ namespace SARotate
             return serviceAccountUsageOrderByGroup;
         }
 
-        private async Task<string> FindPreviousServiceAccountUsedForRemote(string remote)
+        private async Task<string?> FindPreviousServiceAccountUsedForRemote(string remote)
         {
             (string result, int exitCode) = await $"rclone config show {remote}:".Bash();
 
@@ -133,20 +133,30 @@ namespace SARotate
 
             if (string.IsNullOrEmpty(svcAccountLine))
             {
-                return "";
+                LogMessage("could not find service_account_file line");
+                return null;
             }
 
             string? serviceAccount = svcAccountLine.Split("/").LastOrDefault();
 
-            return string.IsNullOrEmpty(serviceAccount) ? "" : serviceAccount;
+            if (!string.IsNullOrEmpty(serviceAccount))
+            {
+                LogMessage(serviceAccount);
+
+                return serviceAccount;
+            }
+
+            LogMessage("could not find service_account_file line");
+            return null;
         }
 
         private List<ServiceAccount> OrderServiceAccountsForUsage(IEnumerable<ServiceAccount> svcaccts)
         {
             var svcAcctsUsageOrder = new List<ServiceAccount>();
-            List<IGrouping<string, ServiceAccount>>? serviceAccountsByProject = svcaccts
-                            .GroupBy(c => c.ProjectId)
-                            .ToList();
+            List<IGrouping<string, ServiceAccount>> serviceAccountsByProject = svcaccts
+                .OrderBy(c => c.ClientEmail)
+                .GroupBy(c => c.ProjectId)
+                .ToList();
 
             int largestNumberOfServiceAccounts = GetMaxNumberOfServiceAccountsForProject(serviceAccountsByProject);
 
@@ -229,19 +239,19 @@ namespace SARotate
             {
                 swapServiceAccounts &= !cancellationToken.IsCancellationRequested;
 
-                foreach ((string key, List<ServiceAccount> value) in serviceAccountUsageOrderByGroup)
+                foreach ((string serviceAccountGroupAbsolutePath, List<ServiceAccount> serviceAccountsForGroup) in serviceAccountUsageOrderByGroup)
                 {
                     if (!swapServiceAccounts)
                     {
                         return;
                     }
 
-                    Dictionary<string, string> remoteConfig = yamlConfigContent.RemoteConfig[key];
+                    Dictionary<string, string> remoteConfig = yamlConfigContent.RemoteConfig[serviceAccountGroupAbsolutePath];
 
-                    foreach (var remote in remoteConfig.Keys)
+                    foreach (string remote in remoteConfig.Keys)
                     {
                         string addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
-                        ServiceAccount nextServiceAccount = value.First();
+                        ServiceAccount nextServiceAccount = serviceAccountsForGroup.First();
 
                         var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
                         var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\": -o service_account_file=\"{nextServiceAccount.FilePath}\"";
@@ -250,7 +260,7 @@ namespace SARotate
 
                         (string result, int exitCode) = await commandForCurrentServiceAccountGroupRemote.Bash();
 
-                        LogMessage($"rclone stdout/err: {result}");
+                        LogMessage($"rclone: {result}");
 
                         if (exitCode != (int)ExitCode.Success)
                         {
@@ -258,8 +268,8 @@ namespace SARotate
                         }
                         else
                         {
-                            value.Remove(nextServiceAccount);
-                            value.Add(nextServiceAccount);
+                            serviceAccountsForGroup.Remove(nextServiceAccount);
+                            serviceAccountsForGroup.Add(nextServiceAccount);
 
                             string stdoutputJson = result
                             .Split("STDOUT:")
