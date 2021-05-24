@@ -261,6 +261,7 @@ namespace SARotate
                         (string result, int exitCode) = await commandForCurrentServiceAccountGroupRemote.Bash();
 
                         LogMessage($"rclone: {result}");
+                        LogMessage($"accountsForGroup: {string.Join(",", serviceAccountsForGroup.Select(sa => sa.FilePath))}");
 
                         if (exitCode != (int)ExitCode.Success)
                         {
