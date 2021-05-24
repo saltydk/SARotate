@@ -10,9 +10,8 @@ namespace SARotate.Models.Google
         [JsonProperty("client_email")]
         public string ClientEmail { get; set; }
         [JsonIgnore]
-        public string FilePath { get; set; }
-
+        public string? FilePath { get; set; }
         [JsonIgnore]
-        public string FileName => FilePath.Split("\\").Last();
+        public string? FileName => FilePath?.Split("\\").Last();
     }
 }
