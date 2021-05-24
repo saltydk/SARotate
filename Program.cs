@@ -130,9 +130,6 @@ namespace SARotate
             RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);
 
             var logger = new LoggerConfiguration()
-                .Enrich.FromLogContext()
-                .Enrich.WithProperty("Application", "SARotate")
-                .Enrich.With<GenericLogEnricher>()
                 .MinimumLevel.ControlledBy(new LoggingLevelSwitch(minimumLogEventLevel))
                 .WriteTo.File(logPath,
                     fileSizeLimitBytes: fileSizeLimitBytes,
