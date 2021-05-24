@@ -9,7 +9,7 @@ namespace SARotate
         public static Task<(string result, int exitCode)> Bash(this string cmd)
         {
             var source = new TaskCompletionSource<(string, int)>();
-            var escapedArgs = cmd.Replace("\"", "\\\"");
+            string escapedArgs = cmd.Replace("\"", "\\\"");
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -27,16 +27,15 @@ namespace SARotate
             {
                 if (process.ExitCode == 0)
                 {
-                    var output = process.StandardOutput.ReadToEnd();
-                    var result = $"STDOUT:{output}";
+                    string output = process.StandardOutput.ReadToEnd();
+                    string result = $"STDOUT:{output}";
 
                     source.SetResult((result, process.ExitCode));
                 }
                 else
                 {
-                    var error = process.StandardError.ReadToEnd();
-
-                    var result = $"STDERR:{error}";
+                    string error = process.StandardError.ReadToEnd();
+                    string result = $"STDERR:{error}";
 
                     source.SetResult((result, process.ExitCode));
                 }

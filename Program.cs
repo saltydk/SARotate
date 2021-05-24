@@ -13,13 +13,12 @@ using SARotate.Models;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using Serilog.Sinks.SystemConsole.Themes;
 
 namespace SARotate
 {
-    class Program
+    internal class Program
     {
-        public static IConfiguration _configuration;
+        private static IConfiguration _configuration;
 
         public class Options
         {
@@ -31,7 +30,7 @@ namespace SARotate
             public string? LogFile { get; set; }
         }
 
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
             var cts = new CancellationTokenSource();
 
@@ -41,7 +40,7 @@ namespace SARotate
                 cts.Cancel();
             };
 
-            using var host = CreateHostBuilder(args).Build();
+            using IHost host = CreateHostBuilder(args).Build();
 
             Log.Information("SARotate started");
 
@@ -52,7 +51,6 @@ namespace SARotate
         {
             string cwd = Directory.GetCurrentDirectory();
 
-            // Build configuration
             _configuration = new ConfigurationBuilder()
                 .SetBasePath(cwd)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -86,7 +84,7 @@ namespace SARotate
 
         private static (string? configAbsolutePath, string? logFilePath, bool verboseFlagExists) ParseArguments(string[] args)
         {
-            bool verboseFlagExists = false;
+            var verboseFlagExists = false;
             string? configAbsolutePath = null;
             string? logFilePath = null;
 
@@ -129,7 +127,7 @@ namespace SARotate
             LogEventLevel minimumLogEventLevel = ConvertMinimumLogLevelConfigToLogEventLevel(minimumLogLevelConfig);
             RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);
 
-            var logger = new LoggerConfiguration()
+            Logger logger = new LoggerConfiguration()
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("Application", "SARotate")
                 .Enrich.With<GenericLogEnricher>()

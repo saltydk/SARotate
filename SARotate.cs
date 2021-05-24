@@ -79,10 +79,8 @@ namespace SARotate
         {
             var serviceAccountUsageOrderByGroup = new Dictionary<string, List<ServiceAccount>>();
 
-            foreach (var serviceAccountFolder in yamlConfigContent.RemoteConfig)
+            foreach ((string serviceAccountsDirectoryAbsolutePath, Dictionary<string, string> remotes) in yamlConfigContent.RemoteConfig)
             {
-                string serviceAccountsDirectoryAbsolutePath = serviceAccountFolder.Key;
-
                 List<ServiceAccount>? svcAccts = await ParseSvcAccts(serviceAccountsDirectoryAbsolutePath);
 
                 if (svcAccts == null || !svcAccts.Any())
@@ -92,7 +90,7 @@ namespace SARotate
 
                 List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcAccts.OrderBy(c => c.ClientEmail).ToList());
 
-                foreach (string remote in yamlConfigContent.RemoteConfig[serviceAccountFolder.Key].Keys)
+                foreach (string remote in remotes.Keys)
                 {
                     string previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote);
 
@@ -112,7 +110,7 @@ namespace SARotate
                     svcAcctsUsageOrder.Add(serviceAccount);
                 }
 
-                serviceAccountUsageOrderByGroup.Add(serviceAccountFolder.Key, svcAcctsUsageOrder);
+                serviceAccountUsageOrderByGroup.Add(serviceAccountsDirectoryAbsolutePath, svcAcctsUsageOrder);
             }
 
             return serviceAccountUsageOrderByGroup;
@@ -120,48 +118,44 @@ namespace SARotate
 
         private async Task<string> FindPreviousServiceAccountUsedForRemote(string remote)
         {
-            var bashResult = await $"rclone config show {remote}:".Bash();
+            (string result, int exitCode) = await $"rclone config show {remote}:".Bash();
 
-            if (bashResult.exitCode != (int)ExitCode.Success)
+            LogMessage(result);
+
+            if (exitCode != (int)ExitCode.Success)
             {
-                throw new Exception(bashResult.result);
+                throw new Exception(result);
             }
 
-            var lines = bashResult.result.Split("\n");
+            string[] lines = result.Split("\n");
 
-            var svcAccountLine = lines.FirstOrDefault(l => l.Contains("service_account_file"));
+            string? svcAccountLine = lines.FirstOrDefault(l => l.Contains("service_account_file"));
 
             if (string.IsNullOrEmpty(svcAccountLine))
             {
                 return "";
             }
-            else
-            {
-                var serviceAccount = svcAccountLine.Split("/").LastOrDefault();
 
-                if (string.IsNullOrEmpty(serviceAccount))
-                {
-                    return "";
-                }
+            string? serviceAccount = svcAccountLine.Split("/").LastOrDefault();
 
-                return serviceAccount;
-            }
+            return string.IsNullOrEmpty(serviceAccount) ? "" : serviceAccount;
         }
 
-        private List<ServiceAccount> OrderServiceAccountsForUsage(List<ServiceAccount> svcacctsJsons)
+        private List<ServiceAccount> OrderServiceAccountsForUsage(IEnumerable<ServiceAccount> svcaccts)
         {
             var svcAcctsUsageOrder = new List<ServiceAccount>();
-            var serviceAccountsByProject = svcacctsJsons
+            List<IGrouping<string, ServiceAccount>>? serviceAccountsByProject = svcaccts
                             .GroupBy(c => c.ProjectId)
                             .ToList();
 
-            var largestNumberOfServiceAccounts = GetMaxNumberOfServiceAccountsForProject(serviceAccountsByProject);
+            int largestNumberOfServiceAccounts = GetMaxNumberOfServiceAccountsForProject(serviceAccountsByProject);
 
-            for (int i = 0; i < largestNumberOfServiceAccounts; i++)
+            for (var i = 0; i < largestNumberOfServiceAccounts; i++)
             {
                 foreach (var projectWithServiceAccounts in serviceAccountsByProject)
                 {
-                    if (projectWithServiceAccounts.ElementAtOrDefault(i) is ServiceAccount account)
+                    ServiceAccount? account = projectWithServiceAccounts.ElementAtOrDefault(i);
+                    if (account != null)
                     {
                         svcAcctsUsageOrder.Add(account);
                     }
@@ -173,24 +167,26 @@ namespace SARotate
 
         private int GetMaxNumberOfServiceAccountsForProject(IEnumerable<IGrouping<string, ServiceAccount>> serviceAccountsByProject)
         {
-            IEnumerable<(IGrouping<string, ServiceAccount> project, int noServiceAccounts)> counts = serviceAccountsByProject
-                .Select(project => (project, project.Count()));
+            List<(IGrouping<string, ServiceAccount> project, int noServiceAccounts)> counts = serviceAccountsByProject
+                .Select(project => (project, project.Count()))
+                .ToList();
 
             int largestNoServiceAccounts = counts.Max(x => x.noServiceAccounts);
             IEnumerable<string> projectsWithLessServiceAccounts = counts.Where(c => c.noServiceAccounts < largestNoServiceAccounts).Select(a => a.project.Key);
+            
             if (projectsWithLessServiceAccounts.Any())
             {
-                var projectsWithMostServiceAccounts = counts
+                IEnumerable<string> projectsWithMostServiceAccounts = counts
                     .Where(c => c.noServiceAccounts == largestNoServiceAccounts)
                     .Select(a => a.project.Key);
-                var logMessage = "amount of service accounts in projects {projects1} is lower than projects {projects2}";
+                const string logMessage = "amount of service accounts in projects {projects1} is lower than projects {projects2}";
                 LogMessage(logMessage, LogLevel.Warning, projectsWithLessServiceAccounts, projectsWithMostServiceAccounts);
             }
 
             return largestNoServiceAccounts;
         }
 
-        private async Task<List<ServiceAccount>?> ParseSvcAccts(string serviceAccountDirectory)
+        private static async Task<List<ServiceAccount>?> ParseSvcAccts(string serviceAccountDirectory)
         {
             var accountCollections = new List<ServiceAccount>();
 
@@ -203,17 +199,19 @@ namespace SARotate
 
             foreach (string fileName in fileNames)
             {
-                if (fileName.ToLower().EndsWith(".json"))
+                if (!fileName.ToLower().EndsWith(".json"))
                 {
-                    using (var streamReader = new StreamReader(fileName))
-                    {
-                        string fileJson = await streamReader.ReadToEndAsync();
+                    continue;
+                }
 
-                        ServiceAccount account = JsonConvert.DeserializeObject<ServiceAccount>(fileJson) ?? throw new ArgumentException("service account file structure is bad");
-                        account.FilePath = fileName;
+                using (var streamReader = new StreamReader(fileName))
+                {
+                    string fileJson = await streamReader.ReadToEndAsync();
 
-                        accountCollections.Add(account);
-                    }
+                    ServiceAccount account = JsonConvert.DeserializeObject<ServiceAccount>(fileJson) ?? throw new ArgumentException("service account file structure is bad");
+                    account.FilePath = fileName;
+
+                    accountCollections.Add(account);
                 }
             }
 
@@ -288,10 +286,10 @@ namespace SARotate
 
         private async Task LogRCloneServiceAccountSwapResult(SARotateConfig yamlConfigContent, string remote, string stdoutputJson, RCloneRCCommandResult rcloneCommandResult)
         {
-            var currentFile = rcloneCommandResult.Result.ServiceAccountFile.Current.Split("/").LastOrDefault();
-            var previousFile = rcloneCommandResult.Result.ServiceAccountFile.Previous.Split("/").LastOrDefault();
+            string? currentFile = rcloneCommandResult.Result.ServiceAccountFile.Current.Split("/").LastOrDefault();
+            string? previousFile = rcloneCommandResult.Result.ServiceAccountFile.Previous.Split("/").LastOrDefault();
 
-            var logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.RCloneConfig.SleepTime} seconds";
+            string logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.RCloneConfig.SleepTime} seconds";
             LogMessage(logMessage, LogLevel.Information);
             LogMessage(stdoutputJson);
             await SendAppriseNotification(yamlConfigContent, logMessage);
