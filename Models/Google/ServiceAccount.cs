@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System.Linq;
+using Newtonsoft.Json;
 
 namespace SARotate.Models.Google
 {
@@ -10,5 +11,8 @@ namespace SARotate.Models.Google
         public string ClientEmail { get; set; }
         [JsonIgnore]
         public string FilePath { get; set; }
+
+        [JsonIgnore]
+        public string FileName => FilePath.Split("\\").Last();
     }
 }

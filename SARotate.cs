@@ -99,7 +99,7 @@ namespace SARotate
                         continue;
                     }
 
-                    ServiceAccount? serviceAccount = svcAcctsUsageOrder.FirstOrDefault(sa => sa.FilePath.Contains(previousServiceAccountUsed));
+                    ServiceAccount? serviceAccount = svcAcctsUsageOrder.FirstOrDefault(sa => sa.FileName == previousServiceAccountUsed);
 
                     if (serviceAccount == null)
                     {
