@@ -37,17 +37,20 @@ namespace SARotate
             AppDomain.CurrentDomain.ProcessExit += (s, e) =>
             {
                 Log.Information("SARotate stopped");
+                Log.CloseAndFlush();
+
                 cts.Cancel();
             };
 
-            using IHost host = CreateHostBuilder(args).Build();
+            using IHost host = CreateHostBuilder(args, cts).Build();
 
             Log.Information("SARotate started");
 
             await host.RunAsync(cts.Token);
+            Log.CloseAndFlush();
         }
 
-        private static IHostBuilder CreateHostBuilder(string[] args)
+        private static IHostBuilder CreateHostBuilder(string[] args, CancellationTokenSource cts)
         {
             string cwd = Directory.GetCurrentDirectory();
 
@@ -78,6 +81,7 @@ namespace SARotate
                     services.AddHostedService<SARotate>();
                     services.AddSingleton(saRotateConfig);
                     services.AddSingleton(_configuration);
+                    services.AddSingleton(cts);
                 })
                 .UseSerilog(logger);
         }
@@ -132,11 +136,11 @@ namespace SARotate
                 .Enrich.WithProperty("Application", "SARotate")
                 .Enrich.With<GenericLogEnricher>()
                 .MinimumLevel.ControlledBy(new LoggingLevelSwitch(minimumLogEventLevel))
-                .WriteTo.File(logPath,
+                .WriteTo.Async(a => a.File(logPath,
                     fileSizeLimitBytes: fileSizeLimitBytes,
                     rollingInterval: rollingInterval,
-                    retainedFileCountLimit: retainedFileCountLimit)
-                .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:j}{NewLine}{Exception}")
+                    retainedFileCountLimit: retainedFileCountLimit))
+                .WriteTo.Async(a => a.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:j}{NewLine}{Exception}"))
                 .CreateLogger();
 
             Log.Logger = logger;

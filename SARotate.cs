@@ -20,14 +20,16 @@ namespace SARotate
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<SARotate> _logger;
+        private readonly CancellationTokenSource _cancellationTokenSource;
         // ReSharper disable once InconsistentNaming
         private readonly SARotateConfig _SARotateConfig;
 
-        public SARotate(IConfiguration configuration, ILogger<SARotate> logger, SARotateConfig SARotateConfig)
+        public SARotate(IConfiguration configuration, ILogger<SARotate> logger, CancellationTokenSource cancellationTokenSource, SARotateConfig SARotateConfig)
         {
             _configuration = configuration;
             _SARotateConfig = SARotateConfig;
             _logger = logger;
+            _cancellationTokenSource = cancellationTokenSource;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -48,11 +50,22 @@ namespace SARotate
             catch (Exception e)
             {
                 await SendAppriseNotification(_SARotateConfig, e.Message, LogLevel.Error);
+
+                if (!_cancellationTokenSource.IsCancellationRequested)
+                {
+                    LogMessage($"Fatal error, shutting down. Error: {e.Message}", LogLevel.Critical);
+                    _cancellationTokenSource.Cancel();
+                }
             }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
+            if (!_cancellationTokenSource.IsCancellationRequested)
+            {
+                _cancellationTokenSource.Cancel();
+            }
+
             return Task.CompletedTask;
         }
 
