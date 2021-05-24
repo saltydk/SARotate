@@ -12,6 +12,6 @@ namespace SARotate.Models.Google
         [JsonIgnore]
         public string? FilePath { get; set; }
         [JsonIgnore]
-        public string? FileName => FilePath?.Split("\\").Last();
+        public string? FileName => FilePath?.Split("/").Last();
     }
 }
