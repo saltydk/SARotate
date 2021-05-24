@@ -118,11 +118,11 @@ namespace SARotate
 
         private static Logger CreateLogger(string cwd, string? logFilePath, bool verboseFlagExists)
         {
-            string logPath = logFilePath ?? _configuration["Serilog:WriteTo:0:Args:configure:1:Args:path"] ?? cwd + "/sarotate.log";
-            string minimumLogLevelConfig = verboseFlagExists ? "Verbose" : _configuration["Serilog:WriteTo:0:Args:configure:1:Args:restrictedToMinimumLevel"] ?? "Information";
-            string rollingIntervalConfig = _configuration["Serilog:WriteTo:0:Args:configure:1:Args:rollingInterval"] ?? "Day";
-            int fileSizeLimitBytes = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:fileSizeLimitBytes"] ?? "5000000");
-            int retainedFileCountLimit = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:1:Args:retainedFileCountLimit"] ?? "5");
+            string logPath = logFilePath ?? _configuration["Serilog:WriteTo:0:Args:configure:0:Args:path"] ?? cwd + "/sarotate.log";
+            string minimumLogLevelConfig = verboseFlagExists ? "Verbose" : _configuration["Serilog:WriteTo:0:Args:configure:0:Args:restrictedToMinimumLevel"] ?? "Information";
+            string rollingIntervalConfig = _configuration["Serilog:WriteTo:0:Args:configure:0:Args:rollingInterval"] ?? "Day";
+            int fileSizeLimitBytes = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:0:Args:fileSizeLimitBytes"] ?? "5000000");
+            int retainedFileCountLimit = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:0:Args:retainedFileCountLimit"] ?? "5");
 
             LogEventLevel minimumLogEventLevel = ConvertMinimumLogLevelConfigToLogEventLevel(minimumLogLevelConfig);
             RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);
