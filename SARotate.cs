@@ -96,6 +96,7 @@ namespace SARotate
 
                     if (string.IsNullOrEmpty(previousServiceAccountUsed))
                     {
+                        LogMessage("unable to find previous service account used for remote " + remote);
                         continue;
                     }
 
@@ -103,6 +104,7 @@ namespace SARotate
 
                     if (serviceAccount == null)
                     {
+                        LogMessage("unable to find local file " + previousServiceAccountUsed);
                         continue;
                     }
 
