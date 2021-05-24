@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -97,14 +98,20 @@ namespace SARotate
                     logFilePath = o.LogFile;
                     verboseFlagExists = o.Verbose;
                 })
-                .WithNotParsed(o =>
+                .WithNotParsed(errs =>
                 {
-                    foreach (Error error in o)
+                    List<Error> errors = errs.ToList();
+
+                    if (!errors.Any(err => err.Tag is ErrorType.HelpRequestedError or ErrorType.VersionRequestedError))
                     {
-                        Console.WriteLine("argument parsing error: " + error);
+                        foreach (Error error in errors)
+                        {
+                            Console.WriteLine("argument parsing error: " + error);
+                        }
+
+                        Console.WriteLine("Passed in unknown flag, exiting.");
                     }
 
-                    Console.WriteLine("Passed in unknown flag, exiting.");
                     Environment.Exit(-1);
                 });
 
