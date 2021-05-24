@@ -292,6 +292,7 @@ namespace SARotate
             var previousFile = rcloneCommandResult.Result.ServiceAccountFile.Previous.Split("/").LastOrDefault();
 
             var logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.RCloneConfig.SleepTime} seconds";
+            LogMessage(logMessage, LogLevel.Information);
             LogMessage(stdoutputJson);
             await SendAppriseNotification(yamlConfigContent, logMessage);
         }
