@@ -6,6 +6,7 @@ Parses the specified Service Account files and automatically identifies the proj
 Heavily inspired by [SARotate](https://github.com/Visorask/SARotate) by [Visorask](https://github.com/Visorask) and with his permission we kept the name.
 
 ## Configuration:
+Program expects a config.yml in the working directory unless a custom path is specified.
 ```
 rclone:
   rclone_config: "/home/user/.config/rclone/rclone.conf"
