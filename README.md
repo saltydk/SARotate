@@ -10,7 +10,7 @@ Rclone v1.55 or newer.
 
 
 ## Configuration:
-Program expects a config.yml in the working directory unless a custom path is specified.
+Program expects a config.yaml in the working directory unless a custom path is specified.
 ```
 rclone:
   rclone_config: "/home/user/.config/rclone/rclone.conf"
