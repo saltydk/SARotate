@@ -11,7 +11,7 @@ Rclone v1.55 or newer.
 
 ## Configuration:
 Program expects a config.yaml in the working directory unless a custom path is specified.
-```
+```yaml
 rclone:
   rclone_config: "/home/user/.config/rclone/rclone.conf"
   rc_user: "user"
@@ -36,7 +36,7 @@ notification:
 ```
 
 ###### Rclone:
-```
+```yaml
 rclone:
   rclone_config: "/home/user/.config/rclone/rclone.conf" # The config loaded when querying rclone
   rc_user: "user" # Optional - Set if you have enabled Rclone authentication
@@ -45,7 +45,7 @@ rclone:
 ```
 
 ###### Remotes:
-```
+```yaml
 remotes:
   '/opt/sa': # Folder containing service accounts
     seedbox-drive: localhost:5623 # Remote that uses the above service accounts and its Rclone address
@@ -59,7 +59,7 @@ remotes:
 ```
 
 ###### Notifications:
-```
+```yaml
 notification:
   errors_only: y # If you only want errors posted to apprise notications
   apprise: # List of apprise notifications. Add one or as many as you want
@@ -68,7 +68,7 @@ notification:
 Look [here](https://github.com/caronc/apprise) for apprise instructions.
 
 ## Service Example:
-```
+```ini
 [Unit]
 Description=sarotate     
 After=network-online.target
