@@ -13,7 +13,7 @@ Google Service Accounts placed in a directory.
 ## Installation:
 Assumes you have fulfilled the above requirements. For information on Rclone remote control you can go [here](https://rclone.org/rc/). For help creating a lot of service accounts quickly you can use [safire](https://github.com/88lex/safire) or [sa-gen](https://github.com/88lex/sa-gen) which are both projects by [Lex](https://github.com/88lex).
 
-We'll be using /opt/sarotate as the directory in this example. The below example assumes your user owns /opt already so change the commands accordingly if that isn't the case for your setup. Folder was chosen since the project has roots in a project using /opt as the main application storage area.
+We'll be using /opt/sarotate as the directory in this example. The below example assumes your user owns /opt already so change the commands accordingly if that isn't the case for your setup. Folder location was chosen due to this project having connections to this [project](https://github.com/saltyorg/Saltbox) which uses /opt for apps in the ecosystem around it.
 
 Create a directory for SARotate and enter it:
 ```shell
