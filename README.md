@@ -7,6 +7,25 @@ Heavily inspired by [SARotate](https://github.com/Visorask/SARotate) by [Visoras
 
 ## Requirements:
 Rclone v1.55 or newer.
+Rclone mount with remote control enabled and authentication either disabled or using a known user/password.
+Google Service Accounts placed in a directory.
+
+## Installation:
+Assumes you have fulfilled the above requirements. For information on Rclone remote control you can go [here](https://rclone.org/rc/). For help creating a lot of service accounts quickly you can use [safire](https://github.com/88lex/safire) or [sa-gen](https://github.com/88lex/sa-gen) which are both projects by [Lex](https://github.com/88lex).
+
+We'll be using /opt/sarotate as the directory in this example. The below example assumes your user owns /opt already so change the commands accordingly if that isn't the case for your setup. Folder was chosen since the project has roots in a project using /opt as the main application storage area.
+
+Create a directory for SARotate and enter it:
+```shell
+mkdir /opt/sarotate
+cd /opt/sarotate
+```
+Download the latest binary:
+```shell
+curl -Ls https://api.github.com/repos/saltydk/sarotate/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | wget -qi -
+chmod +x SARotate
+```
+Place a config.yaml in the same directory as the binary with the configuration described in the next section.
 
 
 ## Configuration:
@@ -35,7 +54,7 @@ notification:
     - 'discord://<webhook>'
 ```
 
-###### Rclone:
+###### Rclone section:
 ```yaml
 rclone:
   rclone_config: "/home/user/.config/rclone/rclone.conf" # The config loaded when querying rclone
@@ -44,7 +63,7 @@ rclone:
   sleeptime: 300 # Delay between service account rotation
 ```
 
-###### Remotes:
+###### Remotes section:
 ```yaml
 remotes:
   '/opt/sa': # Folder containing service accounts
@@ -58,7 +77,7 @@ remotes:
     TV-Anime: localhost:5629
 ```
 
-###### Notifications:
+###### Notifications section:
 ```yaml
 notification:
   errors_only: y # If you only want errors posted to apprise notications
@@ -67,15 +86,17 @@ notification:
 ```
 Look [here](https://github.com/caronc/apprise) for apprise instructions.
 
+Before setting up the service below you should run SARotate manually and make sure it works.
+
 ## Service Example:
 ```ini
 [Unit]
 Description=sarotate     
-After=network-online.target
+After=network-online.target # Could also enter the rclone mount service name here instead and avoid SARotate complaining on system startup until rclone responds to commands.
 
 [Service]
-User=user
-Group=user
+User=user # Change this to your username
+Group=user # Change this to your username
 Type=simple
 WorkingDirectory=/opt/sarotate/
 ExecStart=/opt/sarotate/SARotate
@@ -84,6 +105,14 @@ RestartSec=10
 
 [Install]
 WantedBy=default.target
+```
+You can install the above service example by placing the edited contents in a service file:
+```shell
+sudo nano /etc/systemd/system/sarotate.service
+```
+Then you can enable (starts on boot) and start the service:
+```shell
+sudo systemctl enable sarotate.service && sudo systemctl start sarotate.service
 ```
 
 ## Donations:
