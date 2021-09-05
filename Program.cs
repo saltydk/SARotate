@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SARotate.Infrastructure;
 using SARotate.Models;
+using SARotate.Models.Enums;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -41,6 +42,12 @@ namespace SARotate
 
                 cts.Cancel();
             };
+
+            bool validRcloneVersion = await CheckValidRcloneVersion();
+            if (!validRcloneVersion)
+            {
+                cts.Cancel();
+            }
 
             using IHost host = CreateHostBuilder(args, cts).Build();
 
@@ -84,6 +91,37 @@ namespace SARotate
                     services.AddSingleton(cts);
                 })
                 .UseSerilog(logger);
+        }
+
+        private static async Task<bool> CheckValidRcloneVersion()
+        {
+            (string result, int exitCode) = await "rclone version".Bash();
+
+            if (exitCode != (int)ExitCode.Success)
+            {
+                throw new Exception(result);
+            }
+
+            string[] lines = result.Split("\n");
+
+            string? versionLine = lines.FirstOrDefault(l => l.Contains("rclone v"));
+
+            if (string.IsNullOrEmpty(versionLine))
+            {
+                Console.WriteLine("could not find rclone version line");
+                return false;
+            }
+            int indexOfV = versionLine.IndexOf("v");
+
+            string[]? version = versionLine.Substring(indexOfV).Split(".");
+
+            bool majorValid = int.TryParse(version.First(), out int majorVersion);
+            bool minorValid = int.TryParse(version.Skip(1).First(), out int minorVersion);
+            bool patchValid = int.TryParse(version.Skip(2).First(), out int patchVersion);
+
+            Console.WriteLine("version is " + majorVersion + "." + minorVersion + "." + patchVersion);
+
+            return majorVersion == 1 && minorVersion >= 55 && patchVersion >= 0;
         }
 
         private static (string? configAbsolutePath, string? logFilePath, bool verboseFlagExists) ParseArguments(string[] args)

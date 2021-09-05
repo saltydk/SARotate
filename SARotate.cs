@@ -36,13 +36,6 @@ namespace SARotate
         {
             try
             {
-                bool validRcloneVersion = await CheckValidRcloneVersion();
-
-                if (!validRcloneVersion)
-                {
-                    throw new ArgumentException("Rclone version unsupported");
-                }
-
                 Dictionary<string, List<ServiceAccount>>? serviceAccountUsageOrderByGroup = await GenerateServiceAccountUsageOrderByGroup(_SARotateConfig);
 
                 if (serviceAccountUsageOrderByGroup == null)
@@ -64,39 +57,6 @@ namespace SARotate
                     _cancellationTokenSource.Cancel();
                 }
             }
-        }
-
-        private async Task<bool> CheckValidRcloneVersion()
-        {
-            (string result, int exitCode) = await "rclone version".Bash();
-
-            LogMessage(result);
-
-            if (exitCode != (int)ExitCode.Success)
-            {
-                throw new Exception(result);
-            }
-
-            string[] lines = result.Split("\n");
-
-            string? versionLine = lines.FirstOrDefault(l => l.Contains("rclone v"));
-
-            if (string.IsNullOrEmpty(versionLine))
-            {
-                LogMessage("could not find rclone version line");
-                return false;
-            }
-            int indexOfV = versionLine.IndexOf("v");
-
-            string[]? version = versionLine.Substring(indexOfV).Split(".");
-
-            bool majorValid = int.TryParse(version.First(), out int majorVersion);
-            bool minorValid = int.TryParse(version.Skip(1).First(), out int minorVersion);
-            bool patchValid = int.TryParse(version.Skip(2).First(), out int patchVersion);
-
-            LogMessage("version is " + versionLine, LogLevel.Error);
-
-            return majorVersion == 1 && minorVersion >= 55 && patchVersion >= 0;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
