@@ -46,6 +46,7 @@ namespace SARotate
             bool validRcloneVersion = await CheckValidRcloneVersion();
             if (!validRcloneVersion)
             {
+                Console.WriteLine("Rclone versions below v1.55 are unsupported");
                 cts.Cancel();
             }
 
@@ -113,7 +114,7 @@ namespace SARotate
             }
             int indexOfV = versionLine.IndexOf("v");
 
-            string[]? version = versionLine.Substring(indexOfV).Split(".");
+            string[]? version = versionLine.Substring(indexOfV+1).Split(".");
 
             bool majorValid = int.TryParse(version.First(), out int majorVersion);
             bool minorValid = int.TryParse(version.Skip(1).First(), out int minorVersion);
