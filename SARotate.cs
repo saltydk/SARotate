@@ -36,6 +36,13 @@ namespace SARotate
         {
             try
             {
+                bool validRcloneVersion = await CheckValidRcloneVersion();
+
+                if (!validRcloneVersion)
+                {
+                    throw new ArgumentException("Rclone version unsupported");
+                }
+
                 Dictionary<string, List<ServiceAccount>>? serviceAccountUsageOrderByGroup = await GenerateServiceAccountUsageOrderByGroup(_SARotateConfig);
 
                 if (serviceAccountUsageOrderByGroup == null)
@@ -59,6 +66,39 @@ namespace SARotate
             }
         }
 
+        private async Task<bool> CheckValidRcloneVersion()
+        {
+            (string result, int exitCode) = await "rclone version".Bash();
+
+            LogMessage(result);
+
+            if (exitCode != (int)ExitCode.Success)
+            {
+                throw new Exception(result);
+            }
+
+            string[] lines = result.Split("\n");
+
+            string? versionLine = lines.FirstOrDefault(l => l.Contains("rclone v"));
+
+            if (string.IsNullOrEmpty(versionLine))
+            {
+                LogMessage("could not find rclone version line");
+                return false;
+            }
+            int indexOfV = versionLine.IndexOf("v");
+
+            string[]? version = versionLine.Substring(indexOfV).Split(".");
+
+            bool majorValid = int.TryParse(version.First(), out int majorVersion);
+            bool minorValid = int.TryParse(version.Skip(1).First(), out int minorVersion);
+            bool patchValid = int.TryParse(version.Skip(2).First(), out int patchVersion);
+
+            LogMessage("version is " + versionLine, LogLevel.Error);
+
+            return majorVersion == 1 && minorVersion >= 55 && patchVersion >= 0;
+        }
+
         public Task StopAsync(CancellationToken cancellationToken)
         {
             if (!_cancellationTokenSource.IsCancellationRequested)
@@ -79,8 +119,8 @@ namespace SARotate
                 rcloneCommand += $" --rc-user={yamlConfigContent.RCloneConfig.User} --rc-pass={yamlConfigContent.RCloneConfig.Pass}";
             }
 
-            bool rcloneConfigOverriden = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.ConfigAbsolutePath);
-            if (rcloneConfigOverriden)
+            bool rcloneConfigOverridden = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.ConfigAbsolutePath);
+            if (rcloneConfigOverridden)
             {
                 rcloneCommand += $" --config={yamlConfigContent.RCloneConfig.ConfigAbsolutePath}";
             }
@@ -105,7 +145,7 @@ namespace SARotate
 
                 foreach (string remote in remotes.Keys)
                 {
-                    string? previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote);
+                    string? previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote, yamlConfigContent.RCloneConfig.ConfigAbsolutePath);
 
                     if (string.IsNullOrEmpty(previousServiceAccountUsed))
                     {
@@ -132,9 +172,17 @@ namespace SARotate
             return serviceAccountUsageOrderByGroup;
         }
 
-        private async Task<string?> FindPreviousServiceAccountUsedForRemote(string remote)
+        private async Task<string?> FindPreviousServiceAccountUsedForRemote(string remote, string rcloneConfigPath)
         {
-            (string result, int exitCode) = await $"rclone config show {remote}:".Bash();
+            string rcloneCommand = $"rclone config show {remote}:";
+
+            bool rcloneConfigOverridden = !string.IsNullOrEmpty(rcloneConfigPath);
+            if (rcloneConfigOverridden)
+            {
+                rcloneCommand += $" --config={rcloneConfigPath}";
+            }
+
+            (string result, int exitCode) = await rcloneCommand.Bash();
 
             LogMessage(result);
 
