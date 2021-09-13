@@ -92,11 +92,11 @@ Before setting up the service below you should run SARotate manually and make su
 ```ini
 [Unit]
 Description=sarotate     
-After=network-online.target # Could also enter the rclone mount service name here instead and avoid SARotate complaining on system startup until rclone responds to commands.
+After=network-online.target
 
 [Service]
-User=user # Change this to your username
-Group=user # Change this to your username
+User=user
+Group=user
 Type=simple
 WorkingDirectory=/opt/sarotate/
 ExecStart=/opt/sarotate/SARotate
@@ -106,6 +106,8 @@ RestartSec=10
 [Install]
 WantedBy=default.target
 ```
+Edit the user and group to your existing user and if you want to avoid initial notification errors on boot it is probably a good idea to edit the After=network-online.target to the services used by your mount(s).
+
 You can install the above service example by placing the edited contents in a service file:
 ```shell
 sudo nano /etc/systemd/system/sarotate.service
