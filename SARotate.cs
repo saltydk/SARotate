@@ -278,7 +278,7 @@ namespace SARotate
                         ServiceAccount nextServiceAccount = serviceAccountsForGroup.First();
 
                         var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
-                        var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\": -o service_account_file=\"{nextServiceAccount.FilePath}\"";
+                        var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\" -o service_account_file=\"{nextServiceAccount.FilePath}\"";
 
                         string commandForCurrentServiceAccountGroupRemote = rCloneCommand + rcCommandAddressParameter + rcCommandBackendCommandParameter;
 
