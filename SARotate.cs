@@ -98,12 +98,12 @@ namespace SARotate
                     }
 
                     var remoteVersionUri = new Uri($"{remoteRcloneHost}/core/version");
-                    bool validRcloneVersion = await CheckValidRcloneVersion(remoteVersionUri, remote);
+                    bool validRcloneVersion = await CheckValidRcloneVersion(remoteVersionUri, remote, remotes[remote]);
 
                     if (!validRcloneVersion)
                     {
-                        Console.WriteLine("Ignoring remote: " + remote);
-                        Console.WriteLine("Rclone versions below " + _minimumVersionString + " are unsupported.");
+                        LogMessage("Ignoring remote: " + remote);
+                        LogMessage("Rclone versions below " + _minimumVersionString + " are unsupported.");
                         remotes.Remove(remote);
                     }
 
@@ -122,7 +122,7 @@ namespace SARotate
 
                 foreach (string remote in remotes.Keys)
                 {
-                    string? previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote, remotes[remote].Address);
+                    string? previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote, remotes[remote]);
 
                     if (string.IsNullOrEmpty(previousServiceAccountUsed))
                     {
@@ -184,15 +184,23 @@ namespace SARotate
             return serviceAccountUsageOrderByGroup;
         }
 
-        private async Task<bool> CheckValidRcloneVersion(Uri rcloneVersionEndpoint, string remote)
+        private async Task<bool> CheckValidRcloneVersion(Uri rcloneVersionEndpoint, string remote, RemoteInfo remoteInfo)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, rcloneVersionEndpoint);
+
+            if (!string.IsNullOrEmpty(remoteInfo.User) && !string.IsNullOrEmpty(remoteInfo.Pass))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(remoteInfo.User + ":" + remoteInfo.Pass)));
+                LogMessage("Adding user and password to RClone api request");
+            }
 
             HttpClient client = _httpClientFactory.CreateClient();
 
             HttpResponseMessage response = await client.SendAsync(request);
 
             string resultContent = await response.Content.ReadAsStringAsync();
+
+            LogMessage("resultFromVersion:::: " + resultContent);
 
             dynamic? versionResponse = JsonConvert.DeserializeObject(resultContent);
             dynamic? decomposed = versionResponse?.decomposed;
@@ -205,11 +213,18 @@ namespace SARotate
             return majorVersion == _minimumMajorVersion && minorVersion >= _minimumMinorVersion && patchVersion >= _minimumPatchVersion;
         }
 
-        private async Task<string?> FindPreviousServiceAccountUsedForRemote(string remote, string rcloneApiUri)
+        private async Task<string?> FindPreviousServiceAccountUsedForRemote(string remote, RemoteInfo remoteInfo)
         {
+            string rcloneApiUri = remoteInfo.Address;
             rcloneApiUri += rcloneApiUri.EndsWith("/") ? "backend/command" : "/backend/command";
 
             var request = new HttpRequestMessage(HttpMethod.Post, rcloneApiUri);
+
+            if (!string.IsNullOrEmpty(remoteInfo.User) && !string.IsNullOrEmpty(remoteInfo.Pass))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(remoteInfo.User + ":" + remoteInfo.Pass)));
+                LogMessage("Adding user and password to RClone api request");
+            }
 
             var command = new RCloneServiceAccountCommand
             {
@@ -364,6 +379,12 @@ namespace SARotate
                         rcloneApiUri += rcloneApiUri.EndsWith("/") ? "backend/command" : "/backend/command";
 
                         var request = new HttpRequestMessage(HttpMethod.Post, rcloneApiUri);
+
+                        if (!string.IsNullOrEmpty(remoteConfig[remote].User) && !string.IsNullOrEmpty(remoteConfig[remote].Pass))
+                        {
+                            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(remoteConfig[remote].User + ":" + remoteConfig[remote].Pass)));
+                            LogMessage("Adding user and password to RClone api request");
+                        }
 
                         var command = new RCloneServiceAccountCommand
                         {
