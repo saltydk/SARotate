@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
@@ -20,6 +21,7 @@ namespace SARotate
     internal class Program
     {
         private static IConfiguration _configuration;
+        private static HttpClient _httpClient = new HttpClient();
 
         public class Options
         {
@@ -43,12 +45,12 @@ namespace SARotate
                 cts.Cancel();
             };
 
-            bool validRcloneVersion = await CheckValidRcloneVersion();
-            if (!validRcloneVersion)
-            {
-                Console.WriteLine("Rclone versions below v1.55 are unsupported");
-                cts.Cancel();
-            }
+            //bool validRcloneVersion = await CheckValidRcloneVersion();
+            //if (!validRcloneVersion)
+            //{
+            //    Console.WriteLine("Rclone versions below v1.55 are unsupported");
+            //    cts.Cancel();
+            //}
 
             using IHost host = CreateHostBuilder(args, cts).Build();
 
@@ -86,43 +88,13 @@ namespace SARotate
                 })
                 .ConfigureServices(services =>
                 {
+                    services.AddHttpClient();
                     services.AddHostedService<SARotate>();
                     services.AddSingleton(saRotateConfig);
                     services.AddSingleton(_configuration);
                     services.AddSingleton(cts);
                 })
                 .UseSerilog(logger);
-        }
-
-        private static async Task<bool> CheckValidRcloneVersion()
-        {
-            (string result, int exitCode) = await "rclone version".Bash();
-
-            if (exitCode != (int)ExitCode.Success)
-            {
-                throw new Exception(result);
-            }
-
-            string[] lines = result.Split("\n");
-
-            string? versionLine = lines.FirstOrDefault(l => l.Contains("rclone v"));
-
-            if (string.IsNullOrEmpty(versionLine))
-            {
-                Console.WriteLine("could not find rclone version line");
-                return false;
-            }
-            int indexOfV = versionLine.IndexOf("v");
-
-            string[]? version = versionLine.Substring(indexOfV+1).Split(".");
-
-            bool majorValid = int.TryParse(version.First(), out int majorVersion);
-            bool minorValid = int.TryParse(version.Skip(1).First(), out int minorVersion);
-            bool patchValid = int.TryParse(version.Skip(2).First(), out int patchVersion);
-
-            Console.WriteLine("version is " + majorVersion + "." + minorVersion + "." + patchVersion);
-
-            return majorVersion == 1 && minorVersion >= 55 && patchVersion >= 0;
         }
 
         private static (string? configAbsolutePath, string? logFilePath, bool verboseFlagExists) ParseArguments(string[] args)

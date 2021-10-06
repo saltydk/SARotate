@@ -13,7 +13,7 @@ namespace SARotate.Models
         public RCloneConfig RCloneConfig { get; set; }
         
         [YamlMember(Alias = "remotes")]
-        public Dictionary<string, Dictionary<string, string>> RemoteConfig { get; set; }
+        public Dictionary<string, Dictionary<string, RemoteInfo>> RemoteConfig { get; set; }
 
         /// <summary>
         /// svcAcctGroup absolute path -> remote -> connection info 
@@ -44,7 +44,7 @@ namespace SARotate.Models
                 }
                 catch (Exception)
                 {
-                    Console.WriteLine("Config file invalid format.");
+                    Console.WriteLine("Config file invalid format. Check https://github.com/saltydk/SARotate/blob/main/README.md");
                     return null;
                 }
             }

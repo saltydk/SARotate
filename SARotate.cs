@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -11,6 +14,7 @@ using Newtonsoft.Json;
 using SARotate.Models;
 using SARotate.Models.Enums;
 using SARotate.Models.Google;
+using SARotate.Models.RCloneCommands;
 using LogLevel = SARotate.Models.Enums.LogLevel;
 
 namespace SARotate
@@ -23,11 +27,20 @@ namespace SARotate
         private readonly CancellationTokenSource _cancellationTokenSource;
         // ReSharper disable once InconsistentNaming
         private readonly SARotateConfig _SARotateConfig;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public SARotate(IConfiguration configuration, ILogger<SARotate> logger, CancellationTokenSource cancellationTokenSource, SARotateConfig SARotateConfig)
+
+        private static int _minimumMajorVersion = 1;
+        private static int _minimumMinorVersion = 55;
+        private static int _minimumPatchVersion = 0;
+        private static string _minimumVersionString = "v" + _minimumMajorVersion + "." + _minimumMinorVersion + "." + _minimumPatchVersion;
+
+        public SARotate(IConfiguration configuration, ILogger<SARotate> logger, CancellationTokenSource cancellationTokenSource, 
+            SARotateConfig SARotateConfig, IHttpClientFactory httpClientFactory)
         {
             _configuration = configuration;
             _SARotateConfig = SARotateConfig;
+            _httpClientFactory = httpClientFactory;
             _logger = logger;
             _cancellationTokenSource = cancellationTokenSource;
         }
@@ -43,9 +56,8 @@ namespace SARotate
                     throw new ArgumentException("Service accounts not found");
                 }
 
-                string rCloneCommand = InitializeRCloneCommand(_SARotateConfig);
 
-                await RunSwappingService(_SARotateConfig, serviceAccountUsageOrderByGroup, rCloneCommand, cancellationToken);
+                await RunSwappingService(_SARotateConfig, serviceAccountUsageOrderByGroup, cancellationToken);
             }
             catch (Exception e)
             {
@@ -69,31 +81,34 @@ namespace SARotate
             return Task.CompletedTask;
         }
 
-        public static string InitializeRCloneCommand(SARotateConfig yamlConfigContent)
-        {
-            string rcloneCommand = "rclone rc";
-
-            bool rcloneConfigUserExists = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.User) && !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.Pass);
-            if (rcloneConfigUserExists)
-            {
-                rcloneCommand += $" --rc-user={yamlConfigContent.RCloneConfig.User} --rc-pass={yamlConfigContent.RCloneConfig.Pass}";
-            }
-
-            bool rcloneConfigOverridden = !string.IsNullOrEmpty(yamlConfigContent.RCloneConfig.ConfigAbsolutePath);
-            if (rcloneConfigOverridden)
-            {
-                rcloneCommand += $" --config={yamlConfigContent.RCloneConfig.ConfigAbsolutePath}";
-            }
-
-            return rcloneCommand;
-        }
-
         private async Task<Dictionary<string, List<ServiceAccount>>?> GenerateServiceAccountUsageOrderByGroup(SARotateConfig yamlConfigContent)
         {
             var serviceAccountUsageOrderByGroup = new Dictionary<string, List<ServiceAccount>>();
 
-            foreach ((string serviceAccountsDirectoryAbsolutePath, Dictionary<string, string> remotes) in yamlConfigContent.RemoteConfig)
+            foreach ((string serviceAccountsDirectoryAbsolutePath, Dictionary<string, RemoteInfo> remotes) in yamlConfigContent.RemoteConfig)
             {
+
+                foreach (string remote in remotes.Keys)
+                {
+                    string? remoteRcloneHost = remotes[remote].Address;
+
+                    if (!remoteRcloneHost.ToLower().Contains("http"))
+                    {
+                        remoteRcloneHost = "http://" + remoteRcloneHost;
+                    }
+
+                    var remoteVersionUri = new Uri($"{remoteRcloneHost}/core/version");
+                    bool validRcloneVersion = await CheckValidRcloneVersion(remoteVersionUri, remote);
+
+                    if (!validRcloneVersion)
+                    {
+                        Console.WriteLine("Ignoring remote: " + remote);
+                        Console.WriteLine("Rclone versions below " + _minimumVersionString + " are unsupported.");
+                        remotes.Remove(remote);
+                    }
+
+                }
+
                 List<ServiceAccount>? svcAccts = await ParseSvcAccts(serviceAccountsDirectoryAbsolutePath);
 
                 if (svcAccts == null || !svcAccts.Any())
@@ -102,10 +117,12 @@ namespace SARotate
                 }
 
                 List<ServiceAccount> svcAcctsUsageOrder = OrderServiceAccountsForUsage(svcAccts);
+                ServiceAccount? earliestSvcAcctUsed = null;
+                ServiceAccount? latestSvcAcctUsed = null;
 
                 foreach (string remote in remotes.Keys)
                 {
-                    string? previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote, yamlConfigContent.RCloneConfig.ConfigAbsolutePath);
+                    string? previousServiceAccountUsed = await FindPreviousServiceAccountUsedForRemote(remote, remotes[remote].Address);
 
                     if (string.IsNullOrEmpty(previousServiceAccountUsed))
                     {
@@ -122,9 +139,44 @@ namespace SARotate
                         continue;
                     }
 
-                    svcAcctsUsageOrder.Remove(serviceAccount);
-                    svcAcctsUsageOrder.Add(serviceAccount);
+                    if (earliestSvcAcctUsed == null || latestSvcAcctUsed == null)
+                    {
+                        earliestSvcAcctUsed = serviceAccount;
+                        latestSvcAcctUsed = serviceAccount;
+                    }
+                    else
+                    {
+                        int indexOfSvcAcct = svcAcctsUsageOrder.IndexOf(serviceAccount);
+                        int indexOfCurrentEarliestSvcAcct = svcAcctsUsageOrder.IndexOf(earliestSvcAcctUsed);
+                        int indexOfCurrentLatestSvcAcct = svcAcctsUsageOrder.IndexOf(latestSvcAcctUsed);
+
+                        if (indexOfSvcAcct < indexOfCurrentEarliestSvcAcct)
+                        {
+                            earliestSvcAcctUsed = serviceAccount;
+                        }
+
+                        if (indexOfCurrentLatestSvcAcct < indexOfSvcAcct)
+                        {
+                            latestSvcAcctUsed = serviceAccount;
+                        }
+                    }
                 }
+
+                int indexOfEarliestSvcAcct = svcAcctsUsageOrder.IndexOf(earliestSvcAcctUsed ?? throw new ArgumentNullException());
+                int indexOfLatestSvcAcct = svcAcctsUsageOrder.IndexOf(latestSvcAcctUsed ?? throw new ArgumentNullException());
+
+                bool serviceAccountListLooped = remotes.Keys.Count < indexOfLatestSvcAcct - indexOfEarliestSvcAcct;
+
+                var svcAcctsToReEnqueue = new List<ServiceAccount>();
+
+                int indexOfCutoffForReEnqueue = serviceAccountListLooped ? indexOfEarliestSvcAcct + 1 : indexOfLatestSvcAcct + 1;
+
+                List<ServiceAccount>? accountsToRemove = svcAcctsUsageOrder.GetRange(0, indexOfCutoffForReEnqueue);
+
+                svcAcctsToReEnqueue.AddRange(accountsToRemove);
+
+                svcAcctsUsageOrder.RemoveRange(0, indexOfCutoffForReEnqueue);
+                svcAcctsUsageOrder.AddRange(svcAcctsToReEnqueue);
 
                 serviceAccountUsageOrderByGroup.Add(serviceAccountsDirectoryAbsolutePath, svcAcctsUsageOrder);
             }
@@ -132,36 +184,64 @@ namespace SARotate
             return serviceAccountUsageOrderByGroup;
         }
 
-        private async Task<string?> FindPreviousServiceAccountUsedForRemote(string remote, string rcloneConfigPath)
+        private async Task<bool> CheckValidRcloneVersion(Uri rcloneVersionEndpoint, string remote)
         {
-            string rcloneCommand = $"rclone config show {remote}:";
+            var request = new HttpRequestMessage(HttpMethod.Post, rcloneVersionEndpoint);
 
-            bool rcloneConfigOverridden = !string.IsNullOrEmpty(rcloneConfigPath);
-            if (rcloneConfigOverridden)
+            HttpClient client = _httpClientFactory.CreateClient();
+
+            HttpResponseMessage response = await client.SendAsync(request);
+
+            string resultContent = await response.Content.ReadAsStringAsync();
+
+            dynamic? versionResponse = JsonConvert.DeserializeObject(resultContent);
+            dynamic? decomposed = versionResponse?.decomposed;
+            int majorVersion = decomposed != null ? decomposed[0] : -1;
+            int minorVersion = decomposed != null ? decomposed[1] : -1;
+            int patchVersion = decomposed != null ? decomposed[2] : -1;
+
+            LogMessage($"Version from RClone endpoint of remote {remote} is {majorVersion + "." + minorVersion + "." + patchVersion}");
+
+            return majorVersion == _minimumMajorVersion && minorVersion >= _minimumMinorVersion && patchVersion >= _minimumPatchVersion;
+        }
+
+        private async Task<string?> FindPreviousServiceAccountUsedForRemote(string remote, string rcloneApiUri)
+        {
+            rcloneApiUri += rcloneApiUri.EndsWith("/") ? "backend/command" : "/backend/command";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, rcloneApiUri);
+
+            var command = new RCloneServiceAccountCommand
             {
-                rcloneCommand += $" --config={rcloneConfigPath}";
-            }
+                command = "get",
+                fs = remote+":",
+                opt = new Opt
+                {
+                    service_account_file = ""
+                }
+            };
 
-            (string result, int exitCode) = await rcloneCommand.Bash();
+            request.Content = new StringContent(JsonConvert.SerializeObject(command));
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            request.Headers.Add("Accept", "*/*");
 
-            LogMessage(result);
+            HttpClient client = _httpClientFactory.CreateClient();
 
-            if (exitCode != (int)ExitCode.Success)
-            {
-                throw new Exception(result);
-            }
+            HttpResponseMessage response = await client.SendAsync(request);
 
-            string[] lines = result.Split("\n");
+            dynamic? resultContent = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync());
 
-            string? svcAccountLine = lines.FirstOrDefault(l => l.Contains("service_account_file"));
+            string? serviceAccountFile = resultContent?.result?.service_account_file;
 
-            if (string.IsNullOrEmpty(svcAccountLine))
+            LogMessage("serviceaccountfile - " + resultContent);
+
+            if (string.IsNullOrEmpty(serviceAccountFile))
             {
                 LogMessage("could not find service_account_file line");
                 return null;
             }
 
-            string? serviceAccount = svcAccountLine.Split("/").LastOrDefault();
+            string? serviceAccount = serviceAccountFile.Split("/").LastOrDefault();
 
             if (!string.IsNullOrEmpty(serviceAccount))
             {
@@ -170,7 +250,7 @@ namespace SARotate
                 return serviceAccount;
             }
 
-            LogMessage("could not find service_account_file line");
+            LogMessage("could not find service_account_file SA name");
             return null;
         }
 
@@ -255,7 +335,6 @@ namespace SARotate
         private async Task RunSwappingService(
             SARotateConfig yamlConfigContent,
             Dictionary<string, List<ServiceAccount>> serviceAccountUsageOrderByGroup,
-            string rCloneCommand,
             CancellationToken cancellationToken)
         {
             var swapServiceAccounts = true;
@@ -270,24 +349,48 @@ namespace SARotate
                         return;
                     }
 
-                    Dictionary<string, string> remoteConfig = yamlConfigContent.RemoteConfig[serviceAccountGroupAbsolutePath];
+                    Dictionary<string, RemoteInfo> remoteConfig = yamlConfigContent.RemoteConfig[serviceAccountGroupAbsolutePath];
 
                     foreach (string remote in remoteConfig.Keys)
                     {
-                        string addressForRemote = remoteConfig.Values.First(); //only 1 value, but need dictionary to parse yaml
                         ServiceAccount nextServiceAccount = serviceAccountsForGroup.First();
+                        string rcloneApiUri = remoteConfig[remote].Address;
 
-                        var rcCommandAddressParameter = $" --rc-addr={addressForRemote}";
-                        var rcCommandBackendCommandParameter = $" backend/command command=set fs=\"{remote}:\" -o service_account_file=\"{nextServiceAccount.FilePath}\"";
+                        if (!rcloneApiUri.ToLower().Contains("http"))
+                        {
+                            rcloneApiUri = "http://" + rcloneApiUri;
+                        }
 
-                        string commandForCurrentServiceAccountGroupRemote = rCloneCommand + rcCommandAddressParameter + rcCommandBackendCommandParameter;
+                        rcloneApiUri += rcloneApiUri.EndsWith("/") ? "backend/command" : "/backend/command";
 
-                        (string result, int exitCode) = await commandForCurrentServiceAccountGroupRemote.Bash();
+                        var request = new HttpRequestMessage(HttpMethod.Post, rcloneApiUri);
 
-                        LogMessage($"rclone: {result}");
-                        LogMessage($"accountsForGroup: {string.Join(",", serviceAccountsForGroup.Select(sa => sa.FilePath))}");
+                        var command = new RCloneServiceAccountCommand
+                        {
+                            command = "set",
+                            fs = remote + ":",
+                            opt = new Opt
+                            {
+                                service_account_file = nextServiceAccount.FilePath ?? throw new ArgumentNullException()
+                            }
+                        };
 
-                        if (exitCode != (int)ExitCode.Success)
+                        request.Content = new StringContent(JsonConvert.SerializeObject(command));
+                        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                        request.Headers.Add("Accept", "*/*");
+
+                        HttpClient client = _httpClientFactory.CreateClient();
+
+                        HttpResponseMessage response = await client.SendAsync(request);
+
+                        dynamic? resultContent = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync());
+
+                        string? currentAccountFile = resultContent?.result?.service_account_file.current;
+                        string? previousAccountFile = resultContent?.result?.service_account_file.previous;
+
+                        LogMessage("serviceaccountfile - " + resultContent);
+
+                        if (string.IsNullOrEmpty(currentAccountFile))
                         {
                             await SendAppriseNotification(yamlConfigContent, $"Could not swap service account for remote {remote}", LogLevel.Error);
                         }
@@ -296,12 +399,7 @@ namespace SARotate
                             serviceAccountsForGroup.Remove(nextServiceAccount);
                             serviceAccountsForGroup.Add(nextServiceAccount);
 
-                            string stdoutputJson = result
-                            .Split("STDOUT:")
-                            .Last();
-
-                            RCloneRCCommandResult rCloneCommandResult = JsonConvert.DeserializeObject<RCloneRCCommandResult>(stdoutputJson) ?? throw new ArgumentException("rclone output bad format");
-                            await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, stdoutputJson, rCloneCommandResult);
+                            await LogRCloneServiceAccountSwapResult(yamlConfigContent, remote, Convert.ToString(resultContent), previousAccountFile, currentAccountFile);
                         }
                     }
                 }
@@ -319,14 +417,19 @@ namespace SARotate
             }
         }
 
-        private async Task LogRCloneServiceAccountSwapResult(SARotateConfig yamlConfigContent, string remote, string stdoutputJson, RCloneRCCommandResult rcloneCommandResult)
+        private async Task LogRCloneServiceAccountSwapResult(
+            SARotateConfig yamlConfigContent, 
+            string remote, 
+            string responseMessage, 
+            string previousServiceAccount, 
+            string currentServiceAccount)
         {
-            string? currentFile = rcloneCommandResult.Result.ServiceAccountFile.Current.Split("/").LastOrDefault();
-            string? previousFile = rcloneCommandResult.Result.ServiceAccountFile.Previous.Split("/").LastOrDefault();
+            string? currentFile = currentServiceAccount.Split("/").LastOrDefault();
+            string? previousFile = previousServiceAccount.Split("/").LastOrDefault();
 
             string logMessage = $"Switching remote {remote} from service account {previousFile} to {currentFile} for {yamlConfigContent.RCloneConfig.SleepTime} seconds";
             LogMessage(logMessage, LogLevel.Information);
-            LogMessage(stdoutputJson);
+            LogMessage(responseMessage);
             await SendAppriseNotification(yamlConfigContent, logMessage);
         }
 
