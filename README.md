@@ -32,9 +32,6 @@ Place a config.yaml in the same directory as the binary with the configuration d
 Program expects a config.yaml in the working directory unless a custom path is specified.
 ```yaml
 rclone:
-  rclone_config: "/home/user/.config/rclone/rclone.conf"
-  rc_user: "user"
-  rc_pass: "pass"
   sleeptime: 300
 
 remotes:
