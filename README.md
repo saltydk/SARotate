@@ -39,14 +39,35 @@ rclone:
 
 remotes:
   '/opt/sa':
-    seedbox-drive: localhost:5623
+    seedbox-drive:
+      address: localhost:5623
+      user: meh
+      pass: meh
   '/opt/sa2':
-    Movies: localhost:5629
-    Movies-4K: localhost:5629
-    Movies-Danish: localhost:5629
-    TV: localhost:5629
-    TV-4K: localhost:5629
-    TV-Anime: localhost:5629
+    Movies:
+      address: localhost:5629
+      user: meh
+      pass: meh
+    Movies-4K:
+      address: localhost:5629
+      user: meh
+      pass: meh
+    Movies-Danish:
+      address: localhost:5629
+      user: meh
+      pass: meh
+    TV:
+      address: localhost:5629
+      user: meh
+      pass: meh
+    TV-4K:
+      address: localhost:5629
+      user: meh
+      pass: meh
+    TV-Anime:
+      address: localhost:5629
+      user: meh
+      pass: meh
 
 notification:
   errors_only: y
@@ -57,9 +78,6 @@ notification:
 ###### Rclone section:
 ```yaml
 rclone:
-  rclone_config: "/home/user/.config/rclone/rclone.conf" # The config loaded when querying rclone
-  rc_user: "user" # Optional - Set if you have enabled Rclone authentication
-  rc_pass: "pass" # Optional - Set if you have enabled Rclone authentication
   sleeptime: 300 # Delay between service account rotation
 ```
 
@@ -67,14 +85,35 @@ rclone:
 ```yaml
 remotes:
   '/opt/sa': # Folder containing service accounts
-    seedbox-drive: localhost:5623 # Remote that uses the above service accounts and its Rclone address
+    seedbox-drive:
+      address: localhost:5623 # Remote that uses the above service accounts and its Rclone address
+      user: meh # Optional - Set if you have enabled Rclone authentication
+      pass: meh # Optional - Set if you have enabled Rclone authentication
   '/opt/sa2': # Can add additional folder + remote pairings if needed
-    Movies: localhost:5629
-    Movies-4K: localhost:5629
-    Movies-Danish: localhost:5629
-    TV: localhost:5629
-    TV-4K: localhost:5629
-    TV-Anime: localhost:5629
+    Movies:
+      address: localhost:5629
+      user: meh # Optional - Set if you have enabled Rclone authentication
+      pass: meh # Optional - Set if you have enabled Rclone authentication
+    Movies-4K:
+      address: localhost:5629
+      user: meh # Optional - Set if you have enabled Rclone authentication
+      pass: meh # Optional - Set if you have enabled Rclone authentication
+    Movies-Danish:
+      address: localhost:5629
+      user: meh # Optional - Set if you have enabled Rclone authentication
+      pass: meh # Optional - Set if you have enabled Rclone authentication
+    TV:
+      address: localhost:5629
+      user: meh # Optional - Set if you have enabled Rclone authentication
+      pass: meh # Optional - Set if you have enabled Rclone authentication
+    TV-4K:
+      address: localhost:5629
+      user: meh # Optional - Set if you have enabled Rclone authentication
+      pass: meh # Optional - Set if you have enabled Rclone authentication
+    TV-Anime:
+      address: localhost:5629
+      user: meh # Optional - Set if you have enabled Rclone authentication
+      pass: meh # Optional - Set if you have enabled Rclone authentication
 ```
 
 ###### Notifications section:
