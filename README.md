@@ -136,8 +136,6 @@ Group=user
 Type=simple
 WorkingDirectory=/opt/sarotate/
 ExecStart=/opt/sarotate/SARotate
-Restart=always
-RestartSec=10
 
 [Install]
 WantedBy=default.target
