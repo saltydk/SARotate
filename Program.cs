@@ -54,7 +54,7 @@ namespace SARotate
 
             using IHost host = CreateHostBuilder(args, cts).Build();
 
-            Log.Information("SARotate started");
+            Log.Information("SARotate Version 2.0.1 started");
 
             await host.RunAsync(cts.Token);
             Log.CloseAndFlush();
