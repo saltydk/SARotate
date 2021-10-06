@@ -162,21 +162,24 @@ namespace SARotate
                     }
                 }
 
-                int indexOfEarliestSvcAcct = svcAcctsUsageOrder.IndexOf(earliestSvcAcctUsed ?? throw new ArgumentNullException());
-                int indexOfLatestSvcAcct = svcAcctsUsageOrder.IndexOf(latestSvcAcctUsed ?? throw new ArgumentNullException());
+                if (earliestSvcAcctUsed != null && latestSvcAcctUsed != null)
+                {
+                    int indexOfEarliestSvcAcct = svcAcctsUsageOrder.IndexOf(earliestSvcAcctUsed);
+                    int indexOfLatestSvcAcct = svcAcctsUsageOrder.IndexOf(latestSvcAcctUsed);
 
-                bool serviceAccountListLooped = remotes.Keys.Count < indexOfLatestSvcAcct - indexOfEarliestSvcAcct;
+                    bool serviceAccountListLooped = remotes.Keys.Count < indexOfLatestSvcAcct - indexOfEarliestSvcAcct;
 
-                var svcAcctsToReEnqueue = new List<ServiceAccount>();
+                    var svcAcctsToReEnqueue = new List<ServiceAccount>();
 
-                int indexOfCutoffForReEnqueue = serviceAccountListLooped ? indexOfEarliestSvcAcct + 1 : indexOfLatestSvcAcct + 1;
+                    int indexOfCutoffForReEnqueue = serviceAccountListLooped ? indexOfEarliestSvcAcct + 1 : indexOfLatestSvcAcct + 1;
 
-                List<ServiceAccount>? accountsToRemove = svcAcctsUsageOrder.GetRange(0, indexOfCutoffForReEnqueue);
+                    List<ServiceAccount>? accountsToRemove = svcAcctsUsageOrder.GetRange(0, indexOfCutoffForReEnqueue);
 
-                svcAcctsToReEnqueue.AddRange(accountsToRemove);
+                    svcAcctsToReEnqueue.AddRange(accountsToRemove);
 
-                svcAcctsUsageOrder.RemoveRange(0, indexOfCutoffForReEnqueue);
-                svcAcctsUsageOrder.AddRange(svcAcctsToReEnqueue);
+                    svcAcctsUsageOrder.RemoveRange(0, indexOfCutoffForReEnqueue);
+                    svcAcctsUsageOrder.AddRange(svcAcctsToReEnqueue);
+                }                
 
                 serviceAccountUsageOrderByGroup.Add(serviceAccountsDirectoryAbsolutePath, svcAcctsUsageOrder);
             }
