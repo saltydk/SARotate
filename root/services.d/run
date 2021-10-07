@@ -3,4 +3,4 @@
 
 umask "${UMASK}"
 
-exec s6-setuidgid hotio "${APP_DIR}/SARotate" -v
+exec s6-setuidgid hotio "${APP_DIR}/SARotate" -v -c /config/config.yaml -l /config
