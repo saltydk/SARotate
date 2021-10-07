@@ -2,12 +2,6 @@ name: build
 
 on:
   workflow_dispatch:
-  push:
-    paths-ignore:
-      - '.github/**'
-      - '*.md'
-    branches:
-      - 'master'
 
 jobs:
   docker:
