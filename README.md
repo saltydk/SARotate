@@ -122,6 +122,14 @@ notification:
 ```
 Look [here](https://github.com/caronc/apprise) for apprise instructions.
 
+Set to empty string to disable
+```yaml
+notification:
+  errors_only: y
+  apprise:
+    - ''
+```
+
 Before setting up the service below you should run SARotate manually and make sure it works.
 
 ## Service Example:
