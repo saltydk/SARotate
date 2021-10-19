@@ -22,7 +22,7 @@ cd /opt/sarotate
 ```
 Download the latest binary:
 ```shell
-curl -Ls https://api.github.com/repos/saltydk/sarotate/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | wget -qi -
+curl -LO "$(curl -Ls https://api.github.com/repos/saltydk/sarotate/releases/latest | grep "browser_download_url" | cut -d '"' -f 4)"
 chmod +x SARotate
 ```
 Place a config.yaml in the same directory as the binary with the configuration described in the next section.
