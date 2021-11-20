@@ -459,7 +459,7 @@ namespace SARotate
 
         private async Task SendAppriseNotification(SARotateConfig yamlConfigContent, string logMessage, LogLevel logLevel = LogLevel.Debug)
         {
-            if (yamlConfigContent.NotificationConfig.AppriseNotificationsErrorsOnly && logLevel < LogLevel.Error)
+            if (yamlConfigContent.NotificationConfig.AppriseNotificationsErrorsOnly && yamlConfigContent.NotificationConfig.AppriseServices.Any() && logLevel < LogLevel.Error)
             {
                 LogMessage($"apprise notification not sent due to errors_only notifications: {logMessage}", logLevel);
             }

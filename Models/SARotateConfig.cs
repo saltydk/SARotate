@@ -17,7 +17,7 @@ namespace SARotate.Models
         /// <summary>
         /// svcAcctGroup absolute path -> remote -> connection info 
         /// </summary>
-        [YamlMember(Alias = "notification")] public NotificationConfig NotificationConfig { get; set; }
+        [YamlMember(Alias = "notification")] public NotificationConfig NotificationConfig { get; set; } = new NotificationConfig();
 
         // ReSharper disable once InconsistentNaming
         public static SARotateConfig? ParseSARotateYamlConfig(string configAbsolutePath)
