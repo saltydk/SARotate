@@ -211,7 +211,7 @@ namespace SARotate
             int minorVersion = decomposed != null ? decomposed[1] : -1;
             int patchVersion = decomposed != null ? decomposed[2] : -1;
 
-            LogMessage($"Version from RClone endpoint of remote {remote} is {majorVersion + "." + minorVersion + "." + patchVersion}");
+            LogMessage($"Version from RClone endpoint of remote {remote} is {majorVersion + "." + minorVersion + "." + patchVersion}", LogLevel.Information);
 
             return majorVersion == _minimumMajorVersion && minorVersion >= _minimumMinorVersion && patchVersion >= _minimumPatchVersion;
         }

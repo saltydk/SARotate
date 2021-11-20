@@ -1,9 +1,6 @@
 {
   "profiles": {
-    "Linuxtesting": {
-      "commandName": "Project"
-    },
-    "WSL 2": {
+    "WSL2": {
       "commandName": "WSL2",
       "distributionName": ""
     }

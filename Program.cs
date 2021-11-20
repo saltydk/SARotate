@@ -66,8 +66,8 @@ namespace SARotate
 
             _configuration = new ConfigurationBuilder()
                 .SetBasePath(cwd)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddCommandLine(args)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .Build();
 
             (string? configAbsolutePath, string? logFilePath, bool verboseFlagExists) = ParseArguments(args);
@@ -128,7 +128,7 @@ namespace SARotate
                     Environment.Exit(-1);
                 });
 
-            return (configAbsolutePath, logFilePath, verboseFlagExists);
+            return (configAbsolutePath ?? _configuration["config"], logFilePath, verboseFlagExists);
         }
 
         private static Logger CreateLogger(string cwd, string? logFilePath, bool verboseFlagExists)
