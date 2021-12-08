@@ -21,16 +21,16 @@ jobs:
         dotnet-version: 5.0.x
         
     - name: Install dependencies
-      run: dotnet restore "./SARotate"
+      run: dotnet restore
       
     - name: Build code
-      run: dotnet build "./SARotate" --configuration Release --no-restore
+      run: dotnet build --configuration Release --no-restore
       
     - name: Test code 
-      run: dotnet test "./SARotate" --no-restore --verbosity normal
+      run: dotnet test --no-restore --verbosity normal
       
     - name: Publish application
-      run: dotnet publish -c Release -o "./SARotate" -r ${{ matrix.arch }} --self-contained true /p:UseAppHost=true
+      run: dotnet publish -c Release -o -r ${{ matrix.arch }} --self-contained true /p:UseAppHost=true
       
     - name: Upload Artifacts
       uses: actions/upload-artifact@v2
