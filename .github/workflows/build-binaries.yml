@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-    matrix:
-      arch: [linux-x64, linux-arm64]
+      matrix:
+        arch: [linux-x64, linux-arm64]
     steps:
     - name: Checkout GitHub actions
       uses: actions/checkout@v2
