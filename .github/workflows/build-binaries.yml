@@ -36,4 +36,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
        name: SARotate-${{ matrix.arch }}
-       path: "/home/runner/work/SARotate/SARotate/SARotate/SARotate" 
+       path: "/home/runner/work/SARotate/SARotate/SARotate" 
