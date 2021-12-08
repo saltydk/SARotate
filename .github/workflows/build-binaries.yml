@@ -30,7 +30,7 @@ jobs:
       run: dotnet test --no-restore --verbosity normal
       
     - name: Publish application
-      run: dotnet publish -c Release -o "./SARotate" -r ${{ matrix.arch }} --self-contained true /p:UseAppHost=true
+      run: dotnet publish -c Release -o "./SARotate" -r ${{ matrix.arch }} --self-contained true /p:UseAppHost=true -p:PublishTrimmed=true
       
     - name: Upload Artifacts
       uses: actions/upload-artifact@v2
