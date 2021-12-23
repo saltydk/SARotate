@@ -1,9 +1,7 @@
 name: Build Binaries
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  release:
+    types: [created]
   workflow_dispatch:
 jobs:
   build:
@@ -37,3 +35,10 @@ jobs:
       with:
        name: SARotate-${{ matrix.arch }}
        path: "/home/runner/work/publish"
+
+    - name: Publish Binaries
+      uses: skx/github-action-publish-binaries@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        args: '/home/runner/work/publish/SARotate-*'
