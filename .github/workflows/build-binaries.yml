@@ -36,12 +36,7 @@ jobs:
        name: SARotate-${{ matrix.arch }}
        path: "/home/runner/work/publish"
 
-    - name: Upload ${{ matrix.arch }} artifact
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
+    - name: Release
+      uses: softprops/action-gh-release@v1
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /home/runner/work/publish/SARotate-${{ matrix.arch }}
-        asset_name: SARotate-${{ matrix.arch }}
-        asset_content_type: application/octet-stream
+        files: /home/runner/work/publish/SARotate-${{ matrix.arch }}
