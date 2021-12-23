@@ -162,7 +162,7 @@ sudo systemctl enable sarotate.service && sudo systemctl start sarotate.service
 ```
 
 ## Donations:
-| Developers                                  | Roles              | Methods                                                                                                                                                                                                                                                                      |
-|:------------------------------------------- |:------------------ |:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-[salty](https://github.com/saltydk)         | Developer | [GitHub Sponsors](https://github.com/sponsors/saltydk); [Paypal](https://www.paypal.me/saltydk);
-[Visorask](https://github.com/Visorask)         | Original Author | [GitHub Sponsors](https://github.com/sponsors/Visorask); [Paypal](https://paypal.me/RRussell603);
+| Developers                              | Roles           | Methods                                                                                           |
+|:----------------------------------------|:----------------|:--------------------------------------------------------------------------------------------------|
+| [salty](https://github.com/saltydk)     | Developer       | [GitHub Sponsors](https://github.com/sponsors/saltydk); [Paypal](https://www.paypal.me/saltydk);  |
+| [Visorask](https://github.com/Visorask) | Original Author | [GitHub Sponsors](https://github.com/sponsors/Visorask); [Paypal](https://paypal.me/RRussell603); |  

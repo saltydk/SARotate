@@ -30,13 +30,12 @@ jobs:
     - name: Publish application
       run: dotnet publish -c Release -o "/home/runner/work/publish" -r ${{ matrix.arch }} --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true
       
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v2
+    - name: Upload
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-       name: SARotate-${{ matrix.arch }}
-       path: "/home/runner/work/publish"
-
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: /home/runner/work/publish/SARotate-${{ matrix.arch }}
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: /home/runner/work/publish/SARotate-${{ matrix.arch }}
+        asset_name: SARotate-${{ matrix.arch }}
+        asset_content_type: binary/octet-stream
