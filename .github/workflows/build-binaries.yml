@@ -1,14 +1,14 @@
-name: Build Binaries
+name: Create Release
 on:
   release:
     types: [created]
-  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [linux-x64, linux-arm64]
+        arch: [linux-x64, linux-musl-x64, linux-arm, linux-arm64]
     steps:
     - name: Checkout GitHub actions
       uses: actions/checkout@v2
@@ -21,16 +21,10 @@ jobs:
     - name: Install dependencies
       run: dotnet restore
       
-    - name: Build code
-      run: dotnet build --configuration Release --no-restore
-      
-    - name: Test code 
-      run: dotnet test --no-restore --verbosity normal
-      
     - name: Publish application
       run: dotnet publish -c Release -o "/home/runner/work/publish" -r ${{ matrix.arch }} --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true
       
-    - name: Upload
+    - name: Upload Binary
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
