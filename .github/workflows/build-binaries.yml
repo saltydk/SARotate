@@ -20,9 +20,13 @@ jobs:
         
     - name: Install dependencies
       run: dotnet restore
-      
+
+    - name: Set version var
+      id: vars
+      run: echo ::set-output name=version::$(echo ${GITHUB_REF_NAME/refs\/tags\//} | cut -c2-)
+
     - name: Publish application
-      run: dotnet publish -c Release -o "/home/runner/work/publish" -r ${{ matrix.arch }} --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true -p:Version=${GITHUB_REF_NAME/refs\/tags\//:1}
+      run: dotnet publish -c Release -o "/home/runner/work/publish" -r ${{ matrix.arch }} --self-contained true -p:PublishTrimmed=true -p:PublishSingleFile=true -p:Version=${{ steps.vars.outputs.version }}
       
     - name: Upload Binary
       uses: actions/upload-release-asset@v1
