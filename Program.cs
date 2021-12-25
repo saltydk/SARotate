@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
@@ -47,7 +48,10 @@ namespace SARotate
 
             using IHost host = CreateHostBuilder(args, cts).Build();
 
-            Log.Information("SARotate Version 2.0.3 started");
+            var assembly = Assembly.GetExecutingAssembly();
+            var informationVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+
+            Log.Information($"SARotate Version {informationVersion} started");
 
             await host.RunAsync(cts.Token);
             Log.CloseAndFlush();
