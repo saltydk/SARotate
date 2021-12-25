@@ -19,14 +19,17 @@ We'll be using /opt/sarotate as the directory in this example. The below example
 
 Create a directory for SARotate and enter it:
 ```shell
-mkdir /opt/sarotate
-cd /opt/sarotate
+mkdir /opt/sarotate && cd /opt/sarotate
 ```
-Download the latest binary:
+Download the latest Linux x64 binary: (Options for the last grep include linux-arm, linux-arm64, linux-musl-x64 and linux-x64)
 ```shell
-curl -LO "$(curl -Ls https://api.github.com/repos/saltydk/sarotate/releases/latest | grep "browser_download_url" | cut -d '"' -f 4)"
+curl -L "$(curl -Ls https://api.github.com/repos/saltydk/sarotate/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "linux-x64")" -o SARotate
+```
+
+```shell
 chmod +x SARotate
 ```
+
 Place a config.yaml in the same directory as the binary with the configuration described in the next section.
 
 
