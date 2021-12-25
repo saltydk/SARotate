@@ -9,7 +9,7 @@ namespace SARotate.Models
     public class SARotateConfig
     {
         [YamlMember(Alias = "rclone")]
-        public RCloneConfig RCloneConfig { get; set; }
+        public RCloneConfig RCloneConfig { get; set; } = new RCloneConfig();
         
         [YamlMember(Alias = "remotes")]
         public Dictionary<string, Dictionary<string, RemoteInfo>> RemoteConfig { get; set; }

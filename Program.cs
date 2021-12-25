@@ -45,16 +45,9 @@ namespace SARotate
                 cts.Cancel();
             };
 
-            //bool validRcloneVersion = await CheckValidRcloneVersion();
-            //if (!validRcloneVersion)
-            //{
-            //    Console.WriteLine("Rclone versions below v1.55 are unsupported");
-            //    cts.Cancel();
-            //}
-
             using IHost host = CreateHostBuilder(args, cts).Build();
 
-            Log.Information("SARotate Version 2.0.2 started");
+            Log.Information("SARotate Version 2.0.3 started");
 
             await host.RunAsync(cts.Token);
             Log.CloseAndFlush();
@@ -78,6 +71,7 @@ namespace SARotate
             {
                 Environment.Exit(-1);
             }
+
 
             Logger logger = CreateLogger(cwd, logFilePath, verboseFlagExists);
 
@@ -140,17 +134,17 @@ namespace SARotate
             int retainedFileCountLimit = int.Parse(_configuration["Serilog:WriteTo:0:Args:configure:0:Args:retainedFileCountLimit"] ?? "5");
 
             LogEventLevel minimumLogEventLevel = ConvertMinimumLogLevelConfigToLogEventLevel(minimumLogLevelConfig);
-            RollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);
+            PersistentFileRollingInterval rollingInterval = ConvertRollingIntervalConfigValueToEnum(rollingIntervalConfig);
 
             Logger logger = new LoggerConfiguration()
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("Application", "SARotate")
                 .Enrich.With<GenericLogEnricher>()
                 .MinimumLevel.ControlledBy(new LoggingLevelSwitch(minimumLogEventLevel))
-                .WriteTo.Async(a => a.File(logPath,
-                    fileSizeLimitBytes: fileSizeLimitBytes,
-                    rollingInterval: rollingInterval,
-                    retainedFileCountLimit: retainedFileCountLimit))
+                .WriteTo.PersistentFile(logPath, 
+                fileSizeLimitBytes: fileSizeLimitBytes,
+                persistentFileRollingInterval: rollingInterval,
+                retainedFileCountLimit: retainedFileCountLimit)
                 .WriteTo.Async(a => a.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:j}{NewLine}{Exception}"))
                 .CreateLogger();
 
@@ -159,17 +153,17 @@ namespace SARotate
             return logger;
         }
 
-        private static RollingInterval ConvertRollingIntervalConfigValueToEnum(string rollingInterval)
+        private static PersistentFileRollingInterval ConvertRollingIntervalConfigValueToEnum(string rollingInterval)
         {
             return rollingInterval.ToLower() switch
             {
-                "infinite" => RollingInterval.Infinite,
-                "year" => RollingInterval.Year,
-                "month" => RollingInterval.Month,
-                "day" => RollingInterval.Day,
-                "hour" => RollingInterval.Hour,
-                "minute" => RollingInterval.Minute,
-                _ => RollingInterval.Day
+                "infinite" => PersistentFileRollingInterval.Infinite,
+                "year" => PersistentFileRollingInterval.Year,
+                "month" => PersistentFileRollingInterval.Month,
+                "day" => PersistentFileRollingInterval.Day,
+                "hour" => PersistentFileRollingInterval.Hour,
+                "minute" => PersistentFileRollingInterval.Minute,
+                _ => PersistentFileRollingInterval.Day
             };
         }
 
