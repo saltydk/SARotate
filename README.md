@@ -8,14 +8,16 @@ Parses the specified Service Account files and automatically identifies the proj
 Heavily inspired by [SARotate](https://github.com/Visorask/SARotate) by [Visorask](https://github.com/Visorask) and with his permission we kept the name.
 
 ## Requirements:
-Rclone v1.55 or newer.
+[Rclone](https://github.com/rclone/rclone) v1.55 or newer.
 Rclone mount with remote control enabled and authentication either disabled or using a known user/password.
 Google Service Accounts placed in a directory.
+
+[Apprise](https://github.com/caronc/apprise) - For notications if enabled.
 
 ## Installation:
 Assumes you have fulfilled the above requirements. For information on Rclone remote control you can go [here](https://rclone.org/rc/). For help creating a lot of service accounts quickly you can use [safire](https://github.com/88lex/safire) or [sa-gen](https://github.com/88lex/sa-gen) which are both projects by [Lex](https://github.com/88lex).
 
-We'll be using /opt/sarotate as the directory in this example. The below example assumes your user owns /opt already so change the commands accordingly if that isn't the case for your setup. Folder location was chosen due to this project having connections to this [project](https://github.com/saltyorg/Saltbox) which uses /opt for apps in the ecosystem around it.
+We'll be using /opt/sarotate as the directory in this example. The below example assumes your user owns /opt already so change the commands accordingly if that isn't the case for your setup. Folder location was chosen due to this project having connections to [Saltbox](https://github.com/saltyorg/Saltbox) which uses /opt for apps in the ecosystem around it.
 
 Create a directory for SARotate and enter it:
 ```shell
@@ -43,33 +45,33 @@ remotes:
   '/opt/sa':
     seedbox-drive:
       address: localhost:5623
-      user: meh
-      pass: meh
+      user: username
+      pass: password
   '/opt/sa2':
     Movies:
       address: localhost:5629
-      user: meh
-      pass: meh
+      user: username
+      pass: password
     Movies-4K:
       address: localhost:5629
-      user: meh
-      pass: meh
+      user: username
+      pass: password
     Movies-Danish:
       address: localhost:5629
-      user: meh
-      pass: meh
+      user: username
+      pass: password
     TV:
       address: localhost:5629
-      user: meh
-      pass: meh
+      user: username
+      pass: password
     TV-4K:
       address: localhost:5629
-      user: meh
-      pass: meh
+      user: username
+      pass: password
     TV-Anime:
       address: localhost:5629
-      user: meh
-      pass: meh
+      user: username
+      pass: password
 
 notification:
   errors_only: y
@@ -87,35 +89,35 @@ rclone:
 ```yaml
 remotes:
   '/opt/sa': # Folder containing service accounts
-    seedbox-drive:
-      address: localhost:5623 # Remote that uses the above service accounts and its Rclone address
-      user: meh # Optional - Set if you have enabled Rclone authentication
-      pass: meh # Optional - Set if you have enabled Rclone authentication
-  '/opt/sa2': # Can add additional folder + remote pairings if needed
-    Movies:
-      address: localhost:5629
-      user: meh # Optional - Set if you have enabled Rclone authentication
-      pass: meh # Optional - Set if you have enabled Rclone authentication
-    Movies-4K:
-      address: localhost:5629
-      user: meh # Optional - Set if you have enabled Rclone authentication
-      pass: meh # Optional - Set if you have enabled Rclone authentication
-    Movies-Danish:
-      address: localhost:5629
-      user: meh # Optional - Set if you have enabled Rclone authentication
-      pass: meh # Optional - Set if you have enabled Rclone authentication
-    TV:
-      address: localhost:5629
-      user: meh # Optional - Set if you have enabled Rclone authentication
-      pass: meh # Optional - Set if you have enabled Rclone authentication
-    TV-4K:
-      address: localhost:5629
-      user: meh # Optional - Set if you have enabled Rclone authentication
-      pass: meh # Optional - Set if you have enabled Rclone authentication
-    TV-Anime:
-      address: localhost:5629
-      user: meh # Optional - Set if you have enabled Rclone authentication
-      pass: meh # Optional - Set if you have enabled Rclone authentication
+    seedbox-drive: # Name of remote specified in rclone.conf (case sensitive)
+      address: localhost:5623 # IP/hostname and port used for rclone remote control
+      user: username # Optional - Set if you have enabled Rclone authentication
+      pass: password # Optional - Set if you have enabled Rclone authentication
+  '/opt/sa2': # Can add additional folder + remote pairings as needed
+    Movies: # Name of remote specified in rclone.conf (case sensitive)
+      address: localhost:5629 # IP/hostname and port used for rclone remote control
+      user: username # Optional - Set if you have enabled Rclone authentication
+      pass: password # Optional - Set if you have enabled Rclone authentication
+    Movies-4K: # Name of remote specified in rclone.conf (case sensitive)
+      address: localhost:5629 # IP/hostname and port used for rclone remote control
+      user: username # Optional - Set if you have enabled Rclone authentication
+      pass: password # Optional - Set if you have enabled Rclone authentication
+    Movies-Danish: # Name of remote specified in rclone.conf (case sensitive)
+      address: localhost:5629 # IP/hostname and port used for rclone remote control
+      user: username # Optional - Set if you have enabled Rclone authentication
+      pass: password # Optional - Set if you have enabled Rclone authentication
+    TV: # Name of remote specified in rclone.conf (case sensitive)
+      address: localhost:5629 # IP/hostname and port used for rclone remote control
+      user: username # Optional - Set if you have enabled Rclone authentication
+      pass: password # Optional - Set if you have enabled Rclone authentication
+    TV-4K: # Name of remote specified in rclone.conf (case sensitive)
+      address: localhost:5629 # IP/hostname and port used for rclone remote control
+      user: username # Optional - Set if you have enabled Rclone authentication
+      pass: password # Optional - Set if you have enabled Rclone authentication
+    TV-Anime: # Name of remote specified in rclone.conf (case sensitive)
+      address: localhost:5629 # IP/hostname and port used for rclone remote control
+      user: username # Optional - Set if you have enabled Rclone authentication
+      pass: password # Optional - Set if you have enabled Rclone authentication
 ```
 
 ###### Notifications section:
