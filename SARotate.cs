@@ -318,7 +318,7 @@ namespace SARotate
             return largestNoServiceAccounts;
         }
 
-        private static async Task<List<ServiceAccount>?> ParseSvcAccts(string serviceAccountDirectory)
+        private async Task<List<ServiceAccount>?> ParseSvcAccts(string serviceAccountDirectory)
         {
             var accountCollections = new List<ServiceAccount>();
 
@@ -336,15 +336,23 @@ namespace SARotate
                     continue;
                 }
 
-                using (var streamReader = new StreamReader(filePath))
+                try
                 {
+                    using var streamReader = new StreamReader(filePath);
+
                     string fileJson = await streamReader.ReadToEndAsync();
 
                     ServiceAccount account = JsonConvert.DeserializeObject<ServiceAccount>(fileJson) ?? throw new ArgumentException("service account file structure is bad");
                     account.FilePath = filePath;
 
                     accountCollections.Add(account);
+
                 }
+                catch (Exception)
+                {
+                    const string logMessage = "service account json file {filePath} is invalid";
+                    LogMessage(logMessage, LogLevel.Critical, filePath);
+                }                
             }
 
             return accountCollections;
