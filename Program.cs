@@ -64,7 +64,7 @@ namespace SARotate
             _configuration = new ConfigurationBuilder()
                 .SetBasePath(cwd)
                 .AddCommandLine(args)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
                 .Build();
 
             (string? configAbsolutePath, string? logFilePath, bool verboseFlagExists) = ParseArguments(args);

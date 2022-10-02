@@ -351,7 +351,7 @@ namespace SARotate
                 catch (Exception)
                 {
                     const string logMessage = "service account json file {filePath} is invalid";
-                    LogMessage(logMessage, LogLevel.Critical, filePath);
+                    LogMessage(logMessage, LogLevel.Error, filePath);
                 }                
             }
 
