@@ -8,7 +8,7 @@ VOLUME ["/config"]
 RUN apt update && \
     apt install -y libicu-dev \
         ca-certificates jq curl \
-        locales tzdata && \
+        locales tzdata python3 python3-pip && \
 # generate locale
     locale-gen en_US.UTF-8 && \
 # clean up
