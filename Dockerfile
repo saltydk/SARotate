@@ -2,11 +2,13 @@ FROM ubuntu:jammy
 
 ARG DEBIAN_FRONTEND="noninteractive"
 
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT="1"
+
 VOLUME ["/config"]
 
 # install packages
 RUN apt update && \
-    apt install -y libicu-dev \
+    apt install -y --no-install-recommends --no-install-suggests \
         ca-certificates jq curl \
         locales tzdata python3 python3-pip && \
 # generate locale
@@ -23,4 +25,4 @@ RUN mkdir "/app" && curl -L -o /app/SARotate $(curl -Ls https://api.github.com/r
     chmod -R u=rwX,go=rX "/app" && \
     chmod +x /app/SARotate
 
-ENTRYPOINT ["/app/SARotate -v -c /config/config.yaml -l /config"]
+CMD /app/SARotate -v -c /config/config.yaml -l /config
