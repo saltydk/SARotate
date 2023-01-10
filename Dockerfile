@@ -25,4 +25,5 @@ RUN mkdir "/app" && curl -L -o /app/SARotate $(curl -Ls https://api.github.com/r
     chmod -R u=rwX,go=rX "/app" && \
     chmod +x /app/SARotate
 
+WORKDIR /config
 CMD /app/SARotate -v -c /config/config.yaml -l /config
