@@ -1,6 +1,0 @@
-#!/usr/bin/with-contenv bash
-# shellcheck shell=bash
-
-umask "${UMASK}"
-
-exec s6-setuidgid abc "/app/SARotate" -v -c /config/config.yaml -l /config
