@@ -86,6 +86,9 @@ rclone:
 ```
 
 ###### Remotes section:
+
+Note that multiple remotes that use the same folder of SAs all go under that folder heading.
+
 ```yaml
 remotes:
   '/opt/sa': # Folder containing service accounts
