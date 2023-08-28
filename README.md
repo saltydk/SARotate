@@ -75,6 +75,7 @@ remotes:
 
 notification:
   errors_only: y
+  include_hostname: n
   apprise:
     - 'discord://<webhook>'
 ```
@@ -127,6 +128,7 @@ remotes:
 ```yaml
 notification:
   errors_only: y # If you only want errors posted to apprise notications
+  include_hostname: y # If you want to include the machine hostname in notifications
   apprise: # List of apprise notifications. Add one or as many as you want
     - 'discord://<webhook>'
 ```
