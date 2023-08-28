@@ -475,7 +475,9 @@ namespace SARotate
             {
                 string appriseCommand = $"apprise -vv ";
                 string escapedLogMessage = logMessage.Replace("'", "´").Replace("\"", "´");
-                appriseCommand += $"-b '{escapedLogMessage}' ";
+                string hostName = yamlConfigContent.NotificationConfig.AppriseNotificationsIncludeHostname ? $" on { System.Net.Dns.GetHostName()}" : "";
+
+                appriseCommand += $"-b '{escapedLogMessage}{hostName}' ";
 
                 foreach (var appriseService in yamlConfigContent.NotificationConfig.AppriseServices.Where(svc => !string.IsNullOrWhiteSpace(svc)))
                 {
