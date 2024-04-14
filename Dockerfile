@@ -1,4 +1,4 @@
-FROM ubuntu:jammy
+FROM ubuntu:kinetic
 
 ARG DEBIAN_FRONTEND="noninteractive"
 
